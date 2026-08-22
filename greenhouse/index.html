@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>逐光温室</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="../dream-theme.css?v=20260821-2" />
+  </head>
+  <body class="dream-scene" data-dream-room="greenhouse" data-dream-auto-guide="true">
+    <div id="app">
+      <canvas id="stage" aria-label="逐光温室密室"></canvas>
+
+      <section class="hud hud--title">
+        <p class="eyebrow">第一重梦 · 希望</p>
+        <h1>逐光温室</h1>
+        <p id="status-text" class="status-text">天窗落下一束不肯偏移的光。</p>
+      </section>
+
+      <section class="hud hud--progress" aria-label="苏醒进度">
+        <div id="flower-progress" class="flower-progress"></div>
+        <button id="reset-button" type="button">重置这一重梦</button>
+      </section>
+
+      <section class="hud hud--whisper">
+        <p id="control-text" class="control-text">
+          沿着光走近镜架，它会把方向交给你。
+        </p>
+      </section>
+
+      <section id="exit-overlay" class="dream-exit" hidden aria-live="polite">
+        <p class="dream-exit__message">
+          <span>花醒来的时候，梦没有结束。</span>
+          <span>它只是把你交给了镜子。</span>
+        </p>
+      </section>
+
+      <div id="loading" class="loading">正在温室里唤醒天光……</div>
+      <div id="error" class="error" hidden></div>
+    </div>
+
+    <script>
+      window.__showGreenhouseEntryError = function (message) {
+        const loading = document.getElementById("loading");
+        const errorEl = document.getElementById("error");
+        if (loading) {
+          loading.hidden = true;
+        }
+        if (errorEl) {
+          errorEl.hidden = false;
+          errorEl.textContent = "温室的梦境没有成功展开：" + message;
+        }
+      };
+    </script>
+    <script src="../game-shell.js?v=20260821-1"></script>
+    <script
+      defer
+      src="./demo.bundle.js?v=20260821-1"
+      onerror="window.__showGreenhouseEntryError('入口脚本出错，demo.bundle.js 加载失败')"
+    ></script>
+    <script
+      defer
+      src="./integration.js?v=20260821-1"
+      onerror="window.__showGreenhouseEntryError('返回通路加载失败')"
+    ></script>
+  </body>
+</html>
