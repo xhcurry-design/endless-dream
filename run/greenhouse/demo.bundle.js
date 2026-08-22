@@ -60984,7 +60984,6 @@ function bindEvents() {
   document.addEventListener("mousemove", (event) => {
     if (
       document.pointerLockElement !== canvas ||
-      puzzleState.mirrorMode ||
       isCutsceneActive() ||
       window.EndlessDreamGameShell?.isPaused?.()
     ) {
@@ -62689,7 +62688,6 @@ function clearMovementInput() {
 function updateMouseLook(delta) {
   if (
     document.pointerLockElement !== canvas ||
-    puzzleState.mirrorMode ||
     isCutsceneActive()
   ) {
     syncMouseLookTarget();
@@ -63222,7 +63220,7 @@ function updateControlText() {
 
   if (puzzleState.mirrorMode) {
     controlText.textContent =
-      "你正扶着镜架。J/L 左右偏转，I/K 抬落镜面，再按 E 松手。";
+      "你正扶着镜架。J/L 左右偏转，I/K 抬落镜面；鼠标仍可转动视角，再按 E 松手。";
     return;
   }
 

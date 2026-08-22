@@ -858,19 +858,48 @@
                 console.log(text);
             }
 
+            function promiseWithTimeout(promise, timeoutMs, message) {
+                let timeoutId;
+                const timeout = new Promise((_, reject) => {
+                    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+                });
+                return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+            }
+
+            async function createGraphicsDeviceWithFallback() {
+                const createDevice = (deviceTypes) => Promise.resolve().then(() => pc.createGraphicsDevice(
+                    canvas,
+                    {
+                        deviceTypes,
+                        powerPreference: 'high-performance',
+                        antialias: false,
+                        preserveDrawingBuffer: false,
+                        alpha: false
+                    }
+                ));
+
+                // WebGL2 is broadly available on GitHub Pages. It also avoids a
+                // browser-specific WebGPU probe hanging before the loading timeout.
+                try {
+                    return await promiseWithTimeout(
+                        createDevice([pc.DEVICETYPE_WEBGL2]),
+                        15000,
+                        'WebGL2 初始化超时'
+                    );
+                } catch (webglError) {
+                    console.warn('WebGL2 初始化失败，尝试 WebGPU:', webglError);
+                    return await promiseWithTimeout(
+                        createDevice([pc.DEVICETYPE_WEBGPU]),
+                        15000,
+                        '图形设备初始化超时'
+                    );
+                }
+            }
+
             try {
                 updateLoading('初始化图形设备...');
-                
-                const gfxOptions = {
-                    deviceTypes: [pc.DEVICETYPE_WEBGPU, pc.DEVICETYPE_WEBGL2],
-                    powerPreference: 'high-performance',
-                    antialias: false,
-                    // captureStream() does not need a preserved back buffer;
-                    // keeping it false avoids a full-frame GPU copy every frame.
-                    preserveDrawingBuffer: false,
-                    alpha: false
-                };
-                const device = await pc.createGraphicsDevice(canvas, gfxOptions);
+
+                const device = await createGraphicsDeviceWithFallback();
                 if (devMode) {
                     console.log(`图形后端: ${device.deviceType || device.constructor?.name || 'unknown'}`);
                 }
