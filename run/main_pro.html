@@ -947,9 +947,20 @@
                 }
 
                 const assetListLoader = new pc.AssetListLoader(Object.values(assets), app.assets);
-                
+                // 静态站点上的大场景资源在弱网或旧缓存下可能长期无回调。
+                // 超时后进入可恢复错误界面，而不是无限停留在“加载场景”。
                 await new Promise((resolve, reject) => {
+                    let settled = false;
+                    const timeoutId = window.setTimeout(() => {
+                        if (!settled) {
+                            settled = true;
+                            reject(new Error('场景资源加载超时，请检查网络后重新尝试'));
+                        }
+                    }, 90000);
                     assetListLoader.load((err) => {
+                        if (settled) return;
+                        settled = true;
+                        window.clearTimeout(timeoutId);
                         if (err) reject(new Error(`资源加载失败: ${err}`));
                         else resolve();
                     });
@@ -2601,7 +2612,9 @@
                 setupPlacementPanel();
 
                 // ========== 本地缓存道具 ==========
-                const PROP_API_BASE = window.location.origin;
+                // 页面位于 /run/，公开部署的只读缓存接口位于站点根目录 /api/。
+                // 用页面 URL 解析，兼容本地启动器和 GitHub Pages 项目子路径。
+                const PROP_API_URL = new URL('../api/prop/list', window.location.href).href;
                 const aiPropGrid = document.getElementById('ai-prop-generated');
 
                 function aiPropCard(item) {
@@ -2622,7 +2635,7 @@
 
                 async function loadAiProps() {
                     try {
-                        const r = await fetch(PROP_API_BASE + '/api/prop/list');
+                        const r = await fetch(PROP_API_URL);
                         if (!r.ok) return;
                         const d = await r.json();
                         aiPropGrid.innerHTML = '';
@@ -3526,8 +3539,18 @@
                 console.log(`   道具网格三角：${propCollisionTriangles.length}`);
 
             } catch (err) {
-                loadingEl.style.display = 'block';
-                loadingText.textContent = `加载失败: ${err.message}`;
+                loadingEl.classList.add('is-modal');
+                loadingEl.style.display = 'flex';
+                loadingEl.innerHTML = [
+                    '<div class="spinner"></div>',
+                    '<div id="loading-text">加载失败：' + String(err.message || '未知错误') + '</div>',
+                    '<button type="button" id="scene-retry" style="margin-top:18px;padding:10px 16px;border:1px solid rgba(255,255,255,.65);border-radius:6px;background:#f8f5ef;color:#151713;font:700 14px Microsoft YaHei,Arial;cursor:pointer">重新尝试</button>'
+                ].join('');
+                document.getElementById('scene-retry')?.addEventListener('click', () => {
+                    const retryUrl = new URL(window.location.href);
+                    retryUrl.searchParams.set('scene-retry', String(Date.now()));
+                    window.location.replace(retryUrl.href);
+                }, { once: true });
                 console.error('错误详情:', err);
             }
         })();
