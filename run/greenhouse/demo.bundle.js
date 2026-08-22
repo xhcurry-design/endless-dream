@@ -61048,21 +61048,21 @@ function bindEvents() {
       case "KeyI":
         if (puzzleState.mirrorMode) {
           world.mirrorRig.rotation.x = THREE.MathUtils.clamp(
-            world.mirrorRig.rotation.x - 0.04,
+            world.mirrorRig.rotation.x + 0.04,
             MIRROR_MIN_PITCH,
             MIRROR_MAX_PITCH
           );
-          setStatus("镜面抬起了一点。", 400);
+          setStatus("镜面向上了一点。", 400);
         }
         break;
       case "KeyK":
         if (puzzleState.mirrorMode) {
           world.mirrorRig.rotation.x = THREE.MathUtils.clamp(
-            world.mirrorRig.rotation.x + 0.04,
+            world.mirrorRig.rotation.x - 0.04,
             MIRROR_MIN_PITCH,
             MIRROR_MAX_PITCH
           );
-          setStatus("镜面垂落了一点。", 400);
+          setStatus("镜面向下了一点。", 400);
         }
         break;
       case "KeyR":
@@ -63220,7 +63220,7 @@ function updateControlText() {
 
   if (puzzleState.mirrorMode) {
     controlText.textContent =
-      "你正扶着镜架。J/L 左右偏转，I/K 抬落镜面；鼠标仍可转动视角，再按 E 松手。";
+      "你正扶着镜架。I 向上，K 向下，J/L 左右偏转；鼠标仍可转动视角，再按 E 松手。";
     return;
   }
 
