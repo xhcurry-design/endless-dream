@@ -109,7 +109,10 @@
         var music = null;
         var started = false;
         var muted = isMuted();
-        var MUSIC_URL = "assets/background-music.mp3";
+        var MUSIC_URL = new URL(
+            "assets/background-music.mp3",
+            (document.currentScript && document.currentScript.src) || window.location.href
+        ).href;
         var MUSIC_VOLUME = 0.24;
 
         function setGain() {
