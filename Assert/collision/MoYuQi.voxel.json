@@ -1,0 +1,102 @@
+{
+  "version": "1.1",
+  "asset": {
+    "generator": "generate_room_collision.py",
+    "encodingReference": "splat-transform v3.3.0",
+    "source": "room3dgs_game_integration_r01.zip",
+    "sourceVisualSha256": "291E2EF6B7F2801363F411F9E0C45BEFD4F95706E2712F4AE336027EAFE7675E",
+    "sourceCollisionSha256": "70308BECEFE776A8D6F90AB1C14AAC2F9BA4676A115BB3AF674D57C221FC0A88",
+    "surfaceOccupancy": true,
+    "capsuleCarve": false,
+    "structuralBoxCount": 7,
+    "collisionIncludesStructuralBoxes": true,
+    "gameSplatTransform": {
+      "position": [
+        -0.2181476514,
+        0.1634744378,
+        -0.2738597835
+      ],
+      "quaternionXyzw": [
+        0.0253960364,
+        0.6724043042,
+        0.7380295221,
+        0.0503975948
+      ],
+      "scale": 1.095623083
+    },
+    "packageToGame": [
+      [
+        -0.2154460808524581,
+        -0.007542672216419601,
+        -0.7727238123062621,
+        -2.212876531112738
+      ],
+      [
+        -0.0271934885342058,
+        0.8017708215386105,
+        -0.00024428387885563896,
+        -0.5601564069387083
+      ],
+      [
+        0.7722820056110513,
+        0.02612764032799511,
+        -0.21557793482690846,
+        -1.1455757549219052
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        1.0
+      ]
+    ]
+  },
+  "gridBounds": {
+    "min": [
+      -2.6,
+      -0.7000000000000001,
+      -2.5
+    ],
+    "max": [
+      1.8,
+      1.6,
+      1.2000000000000002
+    ]
+  },
+  "sceneBounds": {
+    "min": [
+      -2.597082537645952,
+      -0.6838467368484744,
+      -2.403074377474023
+    ],
+    "max": [
+      1.7221880227466144,
+      1.5821704701593342,
+      1.1741430837373168
+    ]
+  },
+  "navigation": {
+    "clearanceCorridors": [
+      {
+        "id": "door-to-window-sill",
+        "minY": -0.68,
+        "maxY": 1.1,
+        "radius": 0.29,
+        "points": [
+          [-1.65, -1.28],
+          [-1.45, -1.42],
+          [0.32, -1.42],
+          [0.35, -1.22],
+          [0.35, 0.62]
+        ]
+      }
+    ]
+  },
+  "voxelResolution": 0.025,
+  "leafSize": 4,
+  "treeDepth": 6,
+  "numInteriorNodes": 2646,
+  "numMixedLeaves": 10520,
+  "nodeCount": 13279,
+  "leafDataCount": 21040
+}

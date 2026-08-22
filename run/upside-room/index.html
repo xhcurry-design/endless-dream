@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>无尽梦境 · 倒置房间</title>
+    <link rel="stylesheet" href="./styles.css">
+    <link rel="stylesheet" href="../dream-theme.css?v=20260821-2">
+</head>
+<body class="dream-scene" data-dream-room="upside" data-dream-auto-guide="true">
+    <div class="hud hud--room">
+        <div class="hud__panel">
+            <p class="hud__eyebrow">第二重梦 · 记忆</p>
+            <h1>倒置房间</h1>
+            <p class="hud__copy">白昼会整理表象，阴影才承认哪里多出了一件东西。</p>
+            <p id="objective" class="hud__objective">异常物件 0 / 3</p>
+        </div>
+        <div class="hud__status">
+            <span id="mode-pill" class="pill">阳光模式</span>
+            <button id="toggle-mode" class="toggle" type="button">切换明暗</button>
+        </div>
+    </div>
+
+    <div id="storage-hud" class="storage-hud storage-hud--hidden">
+        <div class="storage-hud__poem" id="storage-poem">储藏室是光的茧，手电是破茧的针。</div>
+        <div class="storage-hud__timer" id="storage-timer">03:00</div>
+        <div class="storage-hud__status" id="storage-status">净化节点 0 / 3</div>
+    </div>
+
+    <div class="reticle" aria-hidden="true"></div>
+
+    <div id="hint" class="hint">房间正在稳定下来……</div>
+
+    <div id="interact-prompt" class="interact-prompt interact-prompt--hidden">[E] 观察</div>
+
+    <div id="danger-overlay" class="danger-overlay"></div>
+    <div id="fade-overlay" class="fade-overlay fade-overlay--hidden">
+        <div id="transition-message" class="fade-overlay__message"></div>
+    </div>
+    <div id="failure-overlay" class="failure-overlay failure-overlay--hidden" aria-live="assertive">
+        <div class="failure-overlay__title">你永远困在了梦的循环里</div>
+        <div class="failure-overlay__subtitle">按 R 重新开始</div>
+    </div>
+
+    <div id="upside-return-overlay" class="upside-return-overlay" aria-hidden="true"></div>
+
+    <canvas id="application"></canvas>
+
+    <script src="../game-shell.js?v=20260821-1"></script>
+    <script src="./vendor/playcanvas.min.js"></script>
+    <script src="./src/boot.js?v=20260821-1"></script>
+    <script src="./integration.js?v=20260821-1"></script>
+</body>
+</html>

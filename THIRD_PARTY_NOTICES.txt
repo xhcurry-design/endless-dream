@@ -1,0 +1,323 @@
+Third-Party Software and Asset Notices
+======================================
+
+This distribution includes the following third-party software and assets.
+
+PlayCanvas Engine 2.21.3 and 2.7.4
+https://github.com/playcanvas/engine
+
+Bundled paths:
+
+- run/vendor/playcanvas-2.21.3.min.js (PlayCanvas Engine 2.21.3)
+- run/upside-room/vendor/playcanvas.min.js (PlayCanvas Engine 2.7.4)
+
+The same MIT license terms supplied with the bundled PlayCanvas runtimes are
+reproduced below.
+
+Copyright (c) 2011-2026 PlayCanvas Ltd.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Ammo.js
+https://github.com/kripken/ammo.js
+
+Bundled paths:
+
+- run/upside-room/vendor/ammo.wasm.js
+- run/upside-room/vendor/ammo.wasm.wasm
+- run/upside-room/vendor/ammo.js
+
+The license text supplied in run/upside-room/vendor/LICENSE-ammojs.txt is
+reproduced verbatim below.
+
+Copyright (c) 2011 ammo.js contributors
+
+This software is provided 'as-is', without any express or implied
+warranty.  In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+---
+
+See AUTHORS for list of contributors.
+
+-------------------------------------------------------------------------------
+
+Lucide-derived inline icons
+https://github.com/lucide-icons/lucide
+
+Selected icon path data is adapted from Lucide and embedded directly in:
+
+- run/main_pro.html (navigation, sound, dialogue, replay, and return controls)
+
+No separate Lucide runtime is bundled. The upstream Lucide license text,
+including the MIT terms for icons derived from Feather, is reproduced below.
+
+ISC License
+
+Copyright (c) 2026 Lucide Icons and Contributors
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+
+---
+
+The following Lucide icons are derived from the Feather project:
+
+airplay, alert-circle, alert-octagon, alert-triangle, aperture,
+arrow-down-circle, arrow-down-left, arrow-down-right, arrow-down,
+arrow-left-circle, arrow-left, arrow-right-circle, arrow-right,
+arrow-up-circle, arrow-up-left, arrow-up-right, arrow-up, at-sign, calendar,
+cast, check, chevron-down, chevron-left, chevron-right, chevron-up,
+chevrons-down, chevrons-left, chevrons-right, chevrons-up, circle, clipboard,
+clock, code, columns, command, compass, corner-down-left, corner-down-right,
+corner-left-down, corner-left-up, corner-right-down, corner-right-up,
+corner-up-left, corner-up-right, crosshair, database, divide-circle,
+divide-square, dollar-sign, download, external-link, feather, frown, hash,
+headphones, help-circle, info, italic, key, layout, life-buoy, link-2, link,
+loader, lock, log-in, log-out, maximize, meh, minimize, minimize-2,
+minus-circle, minus-square, minus, monitor, moon, more-horizontal,
+more-vertical, move, music, navigation-2, navigation, octagon, pause-circle,
+percent, plus-circle, plus-square, plus, power, radio, rss, search, server,
+share, shopping-bag, sidebar, smartphone, smile, square, table-2, tablet,
+target, terminal, trash-2, trash, triangle, tv, type, upload, x-circle,
+x-octagon, x-square, x, zoom-in, zoom-out
+
+The MIT License (MIT) (for the icons listed above)
+
+Copyright (c) 2013-present Cole Bemis
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+ReplicaCAD baked-lighting prototype interiors
+
+Source cited by the bundled asset notes:
+https://huggingface.co/datasets/ai-habitat/ReplicaCAD_baked_lighting
+
+The two room shells, together with their converted or generated runtime,
+embedded, collision, and navigation forms, are packaged under:
+
+- run/upside-room/assets/replicacad/
+
+The bundled run/upside-room/ASSETS.md records that public ReplicaCAD
+distribution pages provide inconsistent licensing information and warns that
+these assets must not be assumed safe for commercial release without a
+separate licensing review. No ReplicaCAD license text or independent
+redistribution grant was supplied with these local assets.
+
+These files are therefore identified as prototype assets only. This notice
+does not claim that they are open source, released under a Creative Commons
+license, approved for commercial use, or otherwise licensed for wider
+redistribution. Their provenance and applicable license must be reviewed
+separately before commercial or wider distribution.
+
+-------------------------------------------------------------------------------
+
+Three.js r168, including bundled example modules
+https://github.com/mrdoob/three.js
+
+MIT License
+
+Copyright 2010-2024 Three.js Authors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Polygonal Mind 3D model assets
+
+Source index:
+https://github.com/ToxSam/open-source-3D-assets
+
+Model repository:
+https://github.com/ToxSam/cc0-models-Polygonal-Mind
+
+The README supplied with the greenhouse asset package identifies these files
+as Polygonal Mind CC0 assets:
+
+- Stage_Structure_Skylight.glb
+- Table_Round_01.glb
+- Door_02.glb
+- Window_01.glb
+- Pot_Plant.glb
+- Grass01.glb
+
+License identified in the supplied README: CC0 1.0 Universal
+Public Domain Dedication:
+https://creativecommons.org/publicdomain/zero/1.0/
+Legal code:
+https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+To the extent possible under law, the person who associated CC0 with these
+works has waived all copyright and related or neighboring rights to the works.
+The URLs above provide the authoritative CC0 deed and legal code.
+
+-------------------------------------------------------------------------------
+
+Sunflower model and texture
+
+Source repository:
+https://github.com/immersive-web/webxr-samples
+
+Files identified in the supplied greenhouse README:
+
+- sunflower.gltf
+- sunflower.bin
+- PUSHILIN_sunflower.png
+
+License identified in the supplied README: MIT. The supplied archive did not
+include the upstream LICENSE file or a copyright notice for these individual
+files. Refer to the source repository for the applicable copyright notice.
+The MIT permission and warranty terms are reproduced below.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+Additional greenhouse assets from the user-supplied package
+
+Source package supplied by the user:
+mirror_svg_demo.zip
+
+The supplied README did not identify a source or license for these packaged
+files:
+
+- Door_LowPoly_CC0.glb
+- Flower01.glb
+- Flower04.glb
+- Flower07.glb
+- JungleVine.png
+- JungleVine_03.png
+- JungleVine_04.png
+- JungleVine_05.png
+- JungleVine_07.png
+
+The user confirmed on 2026-08-15 that they are authorized to use and
+redistribute all contents of the supplied package. The ZIP did not include a
+license file, author attribution, copyright notice, or separate redistribution
+terms for the files listed above. This notice records the user's authorization;
+it does not infer license terms from filenames or claim that these files are
+released under an open-source or Creative Commons license.
+
+-------------------------------------------------------------------------------
+
+Endless Dream entry artwork
+
+Source image supplied by the user:
+7a447cc1af395e39ec0a835b0b4494c3.jpg
+
+Packaged path:
+Assert/ui/endless-dream-entry.jpg
+
+The user supplied this image and authorized its use in this project on
+2026-08-20. The packaged file is an unchanged copy of the supplied image. No
+upstream source, author attribution, license file, copyright notice, or
+separate redistribution terms were supplied. This notice records the user's
+project-specific authorization; it does not claim that the image is open
+source, released under a Creative Commons license, in the public domain, or
+otherwise cleared for unrelated redistribution.
+
+-------------------------------------------------------------------------------
+
+Black cat NPC asset
+
+Source package supplied by the user:
+BlackCat_PlayCanvas.zip (assets/black_cat_walk_game.glb)
+
+Packaged path:
+Assert/npc/black_cat_walk_game.glb
+
+The user confirmed on 2026-08-15 that they are authorized to use and
+redistribute all contents of the supplied package. The ZIP did not include a
+license file, author attribution, copyright notice, or separate redistribution
+terms. This notice records the user's authorization; it does not claim that the
+asset is released under an open-source or Creative Commons license, and it does
+not assert an author or license terms that were not supplied.
