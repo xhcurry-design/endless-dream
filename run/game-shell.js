@@ -95,6 +95,34 @@
     var activePanel = null;
     var previousFocus = null;
     var pauseReasons = new Set();
+    var roomMusic = null;
+    var roomMusicStarted = false;
+    var MUSIC_MUTED_KEY = "moyuqi.soundMuted.v1";
+    var MUSIC_VOLUME = 0.24;
+
+    function startRoomMusic() {
+        if (pageRoomId === "main" || roomMusicStarted) return;
+        roomMusicStarted = true;
+        try {
+            var muted = window.localStorage.getItem(MUSIC_MUTED_KEY) === "true";
+            roomMusic = new Audio(new URL("../assets/background-music.mp3", window.location.href).href);
+            roomMusic.loop = true;
+            roomMusic.preload = "auto";
+            roomMusic.volume = MUSIC_VOLUME;
+            roomMusic.muted = muted;
+            var playing = roomMusic.play();
+            if (playing && typeof playing.catch === "function") {
+                playing.catch(function () {
+                    roomMusicStarted = false;
+                });
+            }
+        } catch (_) {
+            roomMusicStarted = false;
+        }
+    }
+
+    document.addEventListener("pointerdown", startRoomMusic, { once: true });
+    document.addEventListener("keydown", startRoomMusic, { once: true });
 
     function createElement(tagName, className, textContent) {
         var element = document.createElement(tagName);

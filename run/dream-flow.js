@@ -106,13 +106,41 @@
         var context = null;
         var master = null;
         var ambient = null;
+        var music = null;
         var started = false;
         var muted = isMuted();
+        var MUSIC_URL = "assets/background-music.mp3";
+        var MUSIC_VOLUME = 0.24;
 
         function setGain() {
-            if (!master || !context) return;
-            master.gain.cancelScheduledValues(context.currentTime);
-            master.gain.setTargetAtTime(muted ? 0 : 0.72, context.currentTime, 0.08);
+            if (master && context) {
+                master.gain.cancelScheduledValues(context.currentTime);
+                master.gain.setTargetAtTime(muted ? 0 : 0.72, context.currentTime, 0.08);
+            }
+            if (music) {
+                music.muted = muted;
+                music.volume = MUSIC_VOLUME;
+            }
+        }
+
+        function createMusic() {
+            if (music) return music;
+            music = new Audio(MUSIC_URL);
+            music.loop = true;
+            music.preload = "auto";
+            music.volume = MUSIC_VOLUME;
+            music.muted = muted;
+            return music;
+        }
+
+        function startMusic() {
+            var track = createMusic();
+            track.muted = muted;
+            track.volume = MUSIC_VOLUME;
+            var playing = track.play();
+            if (playing && typeof playing.catch === "function") {
+                playing.catch(function () {});
+            }
         }
 
         function createRain() {
@@ -161,6 +189,7 @@
                     started = true;
                     createRain();
                 }
+                startMusic();
                 setGain();
                 return true;
             }).catch(function () {
