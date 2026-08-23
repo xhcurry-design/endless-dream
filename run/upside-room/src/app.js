@@ -4499,10 +4499,10 @@
         return tMax >= 0 && tMin <= 1;
     };
 
-    var UPSIDE_CHAIR_DOORWAY_MIN_X = -1.18;
-    var UPSIDE_CHAIR_DOORWAY_MAX_X = 0.58;
-    var UPSIDE_CHAIR_DOORWAY_MIN_Z = -0.34;
-    var UPSIDE_CHAIR_DOORWAY_MAX_Z = 0.82;
+    var UPSIDE_CHAIR_DOORWAY_MIN_X = -1.35;
+    var UPSIDE_CHAIR_DOORWAY_MAX_X = 0.78;
+    var UPSIDE_CHAIR_DOORWAY_MIN_Z = -0.42;
+    var UPSIDE_CHAIR_DOORWAY_MAX_Z = 1.02;
 
     var isUpsideChairInDoorway = function (cameraPosition) {
         return cameraPosition.x >= UPSIDE_CHAIR_DOORWAY_MIN_X &&
@@ -4518,6 +4518,8 @@
             cameraPosition.z > room.bounds.minZ + roomMargin &&
             cameraPosition.z < room.bounds.maxZ - roomMargin;
         var inDoorwayBand = isUpsideChairInDoorway(cameraPosition);
+        var toTarget = targetPoint.clone().sub(cameraPosition);
+        var distance = toTarget.length();
 
         if (!insideRoom && !inDoorwayBand) {
             return false;
@@ -4525,6 +4527,13 @@
 
         if (inDoorwayBand) {
             return true;
+        }
+
+        if (distance <= 2.2) {
+            toTarget.normalize();
+            if (camera.forward.clone().normalize().dot(toTarget) >= 0.88) {
+                return true;
+            }
         }
 
         if (isUpsideColliderBodyReady() &&
