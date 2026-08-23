@@ -1120,7 +1120,22 @@
      * 二进制文件名由规范约定：把 .voxel.json 后缀替换为 .voxel.bin。
      */
     async function loadVoxelCollision(voxelJsonUrl, options = {}) {
-        const metaRes = await fetch(voxelJsonUrl);
+        const fetchTimeoutMs = Number.isFinite(options.fetchTimeoutMs)
+            ? Math.max(1000, options.fetchTimeoutMs)
+            : 30000;
+        const fetchWithTimeout = async (url) => {
+            const controller = typeof AbortController === 'function'
+                ? new AbortController()
+                : null;
+            const timeoutId = setTimeout(() => controller?.abort(), fetchTimeoutMs);
+            try {
+                return await fetch(url, controller ? { signal: controller.signal } : undefined);
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        };
+
+        const metaRes = await fetchWithTimeout(voxelJsonUrl);
         if (!metaRes.ok) {
             throw new Error(`无法加载 ${voxelJsonUrl}（HTTP ${metaRes.status}）`);
         }
@@ -1132,7 +1147,7 @@
         }
 
         const binUrl = voxelJsonUrl.replace(/\.voxel\.json$/i, '.voxel.bin');
-        const binRes = await fetch(binUrl);
+        const binRes = await fetchWithTimeout(binUrl);
         if (!binRes.ok) {
             throw new Error(`无法加载 ${binUrl}（HTTP ${binRes.status}）`);
         }

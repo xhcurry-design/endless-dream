@@ -60984,7 +60984,6 @@ function bindEvents() {
   document.addEventListener("mousemove", (event) => {
     if (
       document.pointerLockElement !== canvas ||
-      puzzleState.mirrorMode ||
       isCutsceneActive() ||
       window.EndlessDreamGameShell?.isPaused?.()
     ) {
@@ -61048,22 +61047,24 @@ function bindEvents() {
         break;
       case "KeyI":
         if (puzzleState.mirrorMode) {
-          world.mirrorRig.rotation.x = THREE.MathUtils.clamp(
-            world.mirrorRig.rotation.x - 0.04,
-            MIRROR_MIN_PITCH,
-            MIRROR_MAX_PITCH
-          );
-          setStatus("镜面抬起了一点。", 400);
-        }
-        break;
-      case "KeyK":
-        if (puzzleState.mirrorMode) {
+          event.preventDefault();
           world.mirrorRig.rotation.x = THREE.MathUtils.clamp(
             world.mirrorRig.rotation.x + 0.04,
             MIRROR_MIN_PITCH,
             MIRROR_MAX_PITCH
           );
-          setStatus("镜面垂落了一点。", 400);
+          setStatus("镜面向上了一点。", 400);
+        }
+        break;
+      case "KeyK":
+        if (puzzleState.mirrorMode) {
+          event.preventDefault();
+          world.mirrorRig.rotation.x = THREE.MathUtils.clamp(
+            world.mirrorRig.rotation.x - 0.04,
+            MIRROR_MIN_PITCH,
+            MIRROR_MAX_PITCH
+          );
+          setStatus("镜面向下了一点。", 400);
         }
         break;
       case "KeyR":
@@ -61898,12 +61899,12 @@ function addDoorVines(vineTextures, doorWidth, doorHeight) {
       curtain: {
         file: "JungleVine_04.png",
         width: 0.78,
-        height: 0.44,
+        height: 0.52,
         x: 0.02,
-        y: -0.3,
+        y: -0.26,
         z: 0.058,
         rotationZ: 0.19,
-        opacity: 0.76,
+        opacity: 0.9,
       },
       stems: [
         [
@@ -61919,9 +61920,9 @@ function addDoorVines(vineTextures, doorWidth, doorHeight) {
         ],
       ],
       leaves: [
-        { x: -0.25, y: -0.29, z: 0.096, width: 0.09, height: 0.052, rotationZ: -0.55 },
-        { x: 0.03, y: -0.28, z: 0.098, width: 0.1, height: 0.055, rotationZ: 0.55 },
-        { x: 0.25, y: -0.36, z: 0.096, width: 0.092, height: 0.052, rotationZ: -0.72 },
+        { x: -0.25, y: -0.25, z: 0.096, width: 0.105, height: 0.06, rotationZ: -0.55 },
+        { x: 0.03, y: -0.24, z: 0.098, width: 0.115, height: 0.064, rotationZ: 0.55 },
+        { x: 0.25, y: -0.32, z: 0.096, width: 0.108, height: 0.06, rotationZ: -0.72 },
       ],
       releaseX: 0.14 * doorWidth,
       releaseY: 0.18,
@@ -62689,7 +62690,6 @@ function clearMovementInput() {
 function updateMouseLook(delta) {
   if (
     document.pointerLockElement !== canvas ||
-    puzzleState.mirrorMode ||
     isCutsceneActive()
   ) {
     syncMouseLookTarget();
@@ -63222,7 +63222,7 @@ function updateControlText() {
 
   if (puzzleState.mirrorMode) {
     controlText.textContent =
-      "你正扶着镜架。J/L 左右偏转，I/K 抬落镜面，再按 E 松手。";
+      "你正扶着镜架。I 向上，K 向下，J/L 左右偏转；鼠标仍可转动视角，再按 E 松手。";
     return;
   }
 
