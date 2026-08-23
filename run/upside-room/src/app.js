@@ -4689,13 +4689,24 @@
                 continue;
             }
 
-            if (anomaly.id === "upside-chair" && !canSeeUpsideChair(cameraPosition, anomaly.point)) {
-                continue;
-            }
-
             var toTarget = anomaly.point.clone().sub(cameraPosition);
             var distance = toTarget.length();
             if (distance > anomaly.range) {
+                continue;
+            }
+
+            // The chair can be collected from the doorway when its line of sight is clear;
+            // it must not require the reticle to be centered on the object.
+            if (anomaly.id === "upside-chair") {
+                if (!canSeeUpsideChair(cameraPosition, anomaly.point)) {
+                    continue;
+                }
+
+                var chairScore = 1 - (distance * 0.02);
+                if (chairScore > bestScore) {
+                    bestScore = chairScore;
+                    game.currentTarget = anomaly;
+                }
                 continue;
             }
 
