@@ -1,1 +1,3588 @@
-@run/main_pro.html
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <base href="../">
+    <title>无尽梦境</title>
+    <link rel="icon" href="data:,">
+    <script src="run/vendor/playcanvas-2.21.3.min.js"></script>
+    <!-- 体素碰撞系统（数据由 PlayCanvas splat-transform 生成） -->
+    <script src="run/voxel-collision.js?v=20260821-6"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #000;
+            width: 100%;
+            height: 100%;
+        }
+        /* 主游戏画布全屏。 */
+        #application-canvas {
+            width: 100vw;
+            height: 100vh;
+            display: block;
+            position: fixed;
+            left: 0;
+            top: 0;
+            z-index: 1;
+            filter: brightness(1.03) contrast(0.93) saturate(1.08);
+        }
+        #loading {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 10055;
+            pointer-events: none;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            text-align: center;
+        }
+        #loading.is-modal {
+            position: fixed;
+            inset: 0;
+            transform: none;
+            z-index: 10070;
+            display: flex !important;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: rgba(3, 8, 14, 0.76);
+            backdrop-filter: blur(7px);
+            pointer-events: auto;
+        }
+        #loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255,255,255,0.2);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        #record-btn {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 20px;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            background: rgba(255,255,255,0.15);
+            color: white;
+            backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
+            display: none;
+        }
+        #record-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+        #record-btn.recording {
+            background: rgba(220,40,40,0.85);
+            color: white;
+            animation: record-pulse 1.2s ease-in-out infinite;
+        }
+        @keyframes record-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220,40,40,0.6); }
+            50% { box-shadow: 0 0 0 10px rgba(220,40,40,0); }
+        }
+        #record-timer {
+            margin-left: 8px;
+            font-variant-numeric: tabular-nums;
+        }
+        #placement-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 10050;
+            background: rgba(0, 0, 0, 0.55);
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(5px);
+        }
+        #placement-panel {
+            background: rgba(18, 20, 28, 0.97);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 12px;
+            padding: 18px 20px 16px;
+            max-width: min(92vw, 520px);
+            max-height: min(78vh, 560px);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+            color: #fff;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        #placement-panel h2 {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        #placement-panel .placement-sub {
+            margin: 0 0 12px 0;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.55);
+        }
+        #placement-toolbar {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 10px;
+        }
+        #placement-close {
+            padding: 6px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        #placement-close:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+        #placement-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            overflow-y: auto;
+            padding: 2px;
+        }
+        #ai-prop-section {
+            margin-bottom: 14px;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid rgba(130, 80, 255, 0.25);
+            background: rgba(100, 60, 220, 0.08);
+        }
+        #ai-prop-section h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            font-weight: 600;
+            color: #c8a0ff;
+        }
+        #ai-prop-generated {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .ai-prop-card {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 6px;
+            border-radius: 8px;
+            border: 1px solid rgba(130, 80, 255, 0.2);
+            background: rgba(130, 80, 255, 0.06);
+            cursor: pointer;
+            transition: 0.15s;
+        }
+        .ai-prop-card:hover {
+            background: rgba(130, 80, 255, 0.18);
+            border-color: rgba(130, 80, 255, 0.5);
+        }
+        .ai-prop-card img {
+            width: 72px;
+            height: 72px;
+            object-fit: contain;
+            border-radius: 6px;
+            background: rgba(0,0,0,0.3);
+        }
+        .ai-prop-card .ai-prop-name {
+            font-size: 11px;
+            text-align: center;
+            line-height: 1.2;
+            color: #ddd;
+            max-width: 90px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .placement-card {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 8px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(255, 255, 255, 0.06);
+            color: #fff;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.15s, border-color 0.15s;
+        }
+        .placement-card:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(120, 180, 255, 0.45);
+        }
+        .placement-card-icon {
+            font-size: 28px;
+            line-height: 1;
+        }
+        .placement-card-title {
+            text-align: center;
+            line-height: 1.2;
+        }
+        #debug-panel {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: monospace;
+            font-size: 12px;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 8px;
+            display: block;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        #entry-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 10100;
+            display: grid;
+            align-items: end;
+            overflow: hidden;
+            color: #f8f5ef;
+            background-color: #171815;
+            background-image: url("Assert/scene/MoYuQi_pano.webp");
+            background-position: center 46%;
+            background-repeat: no-repeat;
+            background-size: cover;
+            font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+        }
+        #entry-screen::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(8, 10, 8, 0.06) 34%, rgba(8, 10, 8, 0.82) 100%);
+            pointer-events: none;
+        }
+        #entry-screen.hidden {
+            display: none;
+        }
+        .entry-content {
+            position: relative;
+            z-index: 1;
+            width: min(1120px, calc(100% - 64px));
+            margin: 0 auto;
+            padding: 0 0 clamp(42px, 8vh, 84px);
+        }
+        .entry-title {
+            margin: 0 0 22px;
+            font-family: "STKaiti", "KaiTi", "Microsoft YaHei", serif;
+            font-size: clamp(54px, 9vh, 92px);
+            font-weight: 500;
+            line-height: 1;
+            letter-spacing: 0;
+            text-shadow: 0 3px 24px rgba(0, 0, 0, 0.68);
+        }
+        #enter-game {
+            min-height: 46px;
+            padding: 0 22px;
+            border: 1px solid rgba(255, 255, 255, 0.68);
+            border-radius: 6px;
+            color: #151713;
+            background: rgba(248, 245, 239, 0.94);
+            box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+            font-family: inherit;
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0;
+            cursor: pointer;
+            transition: background 160ms ease, transform 160ms ease;
+        }
+        #enter-game:hover,
+        #enter-game:focus-visible {
+            background: #fff;
+            transform: translateY(-1px);
+            outline: 2px solid rgba(255, 255, 255, 0.72);
+            outline-offset: 3px;
+        }
+        #first-person-hud {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            pointer-events: none;
+            font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+        }
+        #first-person-hud.is-active {
+            display: block;
+        }
+        #crosshair {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 5px;
+            height: 5px;
+            transform: translate(-50%, -50%);
+            border: 1px solid rgba(255, 255, 255, 0.88);
+            border-radius: 50%;
+            background: rgba(18, 20, 17, 0.42);
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.22);
+        }
+        #interaction-prompt,
+        #pointer-lock-prompt {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none;
+            align-items: center;
+            gap: 10px;
+            max-width: calc(100vw - 32px);
+            padding: 9px 13px;
+            border: 1px solid rgba(255, 255, 255, 0.24);
+            border-radius: 6px;
+            color: #fff;
+            background: rgba(13, 15, 13, 0.76);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(8px);
+            font-size: 14px;
+            white-space: nowrap;
+        }
+        #interaction-prompt {
+            bottom: 14%;
+        }
+        #pointer-lock-prompt {
+            bottom: 28px;
+        }
+        #interaction-prompt.is-visible,
+        #pointer-lock-prompt.is-visible {
+            display: flex;
+        }
+        #interaction-prompt kbd {
+            min-width: 24px;
+            height: 24px;
+            display: inline-grid;
+            place-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.52);
+            border-radius: 4px;
+            color: #11130f;
+            background: #f5f2ea;
+            font: 700 13px/1 Arial, sans-serif;
+            box-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+        }
+        #inventory-hud {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            display: none;
+            min-height: 30px;
+            align-items: center;
+            padding: 0 11px;
+            border-left: 2px solid rgba(236, 193, 95, 0.92);
+            color: #fff7df;
+            background: rgba(13, 15, 13, 0.72);
+            box-shadow: 0 8px 22px rgba(0, 0, 0, 0.24);
+            backdrop-filter: blur(8px);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+        #inventory-hud.is-visible {
+            display: flex;
+        }
+        #transition-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 10200;
+            pointer-events: none;
+            opacity: 0;
+            background: #030403;
+            transition: opacity 700ms ease;
+        }
+        #transition-overlay.is-active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        #record-btn {
+            left: auto;
+            right: 14px;
+            transform: none;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+        @media (max-width: 700px) {
+            .entry-content {
+                width: calc(100% - 40px);
+                padding-bottom: 38px;
+            }
+            .entry-title {
+                font-size: 54px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="run/dream-theme.css?v=20260821-2">
+</head>
+<body data-dream-room="main">
+    <div id="entry-screen" aria-labelledby="entry-title">
+        <div class="entry-topline">
+            <span>ENDLESS DREAM · CHAPTER ZERO</span>
+        </div>
+        <div class="entry-content">
+            <span class="entry-kicker">第一章 · 被遗忘的房间</span>
+            <h1 class="entry-title" id="entry-title">无尽梦境</h1>
+            <p class="entry-en-title">Endless Dream</p>
+            <div class="entry-actions">
+                <button type="button" id="enter-game">
+                    <span>进入梦境</span>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M5 12h14"></path>
+                        <path d="m12 5 7 7-7 7"></path>
+                    </svg>
+                </button>
+                <button type="button" id="restart-dream" aria-label="重新开始" title="重新开始" hidden>
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <p class="entry-dedication">将此游戏献给每一个困在自己梦里的人</p>
+        <button type="button" class="entry-sound" id="entry-sound" aria-label="关闭声音" title="关闭声音">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M11 5 6 9H2v6h4l5 4V5z"></path>
+                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+            </svg>
+        </button>
+    </div>
+
+    <!-- 墨雨栖第一人称游戏画面 -->
+    <canvas id="application-canvas" tabindex="0" aria-label="墨雨栖第一人称游戏画面"></canvas>
+    <div id="first-person-hud" aria-hidden="true">
+        <span id="crosshair" aria-hidden="true"></span>
+        <div id="dream-objective" role="status" aria-live="polite">
+            <span class="dream-objective__chapter" id="dream-objective-chapter"></span>
+            <strong class="dream-objective__title" id="dream-objective-title"></strong>
+            <span class="dream-objective__detail" id="dream-objective-detail"></span>
+        </div>
+        <div id="inventory-hud" role="status"></div>
+        <div id="interaction-prompt" role="status" aria-live="polite">
+            <kbd>E</kbd><span>触碰镜面</span>
+        </div>
+        <div id="pointer-lock-prompt" role="status">点击画面继续</div>
+        <div id="dream-toast" role="status" aria-live="polite"></div>
+    </div>
+    <section id="dream-dialogue" role="dialog" aria-modal="true" aria-labelledby="dream-dialogue-speaker">
+        <div class="dream-dialogue__caption">
+            <p class="dream-dialogue__speaker" id="dream-dialogue-speaker">引路者 · 黑猫</p>
+            <p class="dream-dialogue__line" id="dream-dialogue-line"></p>
+            <span class="dream-dialogue__progress" id="dream-dialogue-progress"></span>
+            <button class="dream-dialogue__next" id="dream-dialogue-next" type="button" aria-label="下一句" title="下一句">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M5 12h14"></path>
+                    <path d="m12 5 7 7-7 7"></path>
+                </svg>
+            </button>
+        </div>
+    </section>
+    <section id="dream-reward" role="status" aria-live="polite">
+        <div class="dream-reward__content">
+            <span class="dream-reward__eyebrow" id="dream-reward-eyebrow"></span>
+            <strong class="dream-reward__name" id="dream-reward-name"></strong>
+            <span class="dream-reward__copy" id="dream-reward-copy"></span>
+        </div>
+    </section>
+    <div id="transition-overlay" aria-hidden="true"></div>
+    <section id="dream-victory" role="dialog" aria-modal="true" aria-labelledby="dream-victory-title">
+        <div class="dream-victory__inner">
+            <p class="dream-victory__eyebrow">三重梦境已穿过 · 但你仍未醒来</p>
+            <h2 class="dream-victory__title" id="dream-victory-title">梦境已记住你</h2>
+            <p class="dream-victory__quote">“你以为钥匙会打开门。其实，它只打开了另一场梦的入口。”</p>
+            <div class="dream-victory__stats" aria-label="旅程回顾">
+                <div class="dream-victory__stat"><span>希望</span><strong>镜中花</strong></div>
+                <div class="dream-victory__stat"><span>记忆</span><strong>向日通道</strong></div>
+                <div class="dream-victory__stat"><span>恐惧</span><strong>日照钥匙</strong></div>
+                <div class="dream-victory__stat"><span>梦中时间</span><strong id="dream-victory-time">00:00</strong></div>
+            </div>
+            <div class="dream-victory__actions">
+                <button class="dream-victory__button dream-victory__button--primary" id="dream-victory-restart" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                    <span>再次入梦</span>
+                </button>
+                <button class="dream-victory__button" id="dream-victory-title-button" type="button">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M3 12h18"></path>
+                        <path d="m9 18-6-6 6-6"></path>
+                    </svg>
+                    <span>返回封面</span>
+                </button>
+            </div>
+        </div>
+    </section>
+    <button id="record-btn" onclick="toggleRecording()">⏺ 开始录制</button>
+    <div id="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">加载高斯场景...</div>
+    </div>
+    <div id="placement-overlay" aria-hidden="true">
+        <div id="placement-panel" role="dialog" aria-label="摆放道具">
+            <div id="placement-toolbar">
+                <button type="button" id="placement-close">关闭 (Esc)</button>
+            </div>
+            <h2>摆放道具</h2>
+            <p class="placement-sub">点击一项，在角色面朝方向前方放置；再按 Alt 或 Esc 可关闭面板。</p>
+            <div id="ai-prop-section">
+                <h3>已缓存道具</h3>
+                <div id="ai-prop-generated"></div>
+            </div>
+            <div id="placement-grid"></div>
+        </div>
+    </div>
+    <div id="debug-panel"></div>
+
+    <script>
+        // ========== 录制功能 ==========
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let recordStartTime = 0;
+        let recordTimerInterval = null;
+        let recordCaptureStream = null;
+
+        function formatTime(ms) {
+            const totalSec = Math.floor(ms / 1000);
+            const min = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            const sec = (totalSec % 60).toString().padStart(2, '0');
+            return min + ':' + sec;
+        }
+
+        function toggleRecording() {
+            const btn = document.getElementById('record-btn');
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                // 停止录制
+                mediaRecorder.stop();
+            } else {
+                // 仅录制 WebGL Canvas：导出视频不含录制按钮、操作提示等 DOM 叠层
+                recordedChunks = [];
+                const canvas = document.getElementById('application-canvas');
+                if (!canvas) {
+                    console.error('未找到 application-canvas');
+                    return;
+                }
+                if (recordCaptureStream) {
+                    recordCaptureStream.getTracks().forEach((t) => t.stop());
+                    recordCaptureStream = null;
+                }
+                recordCaptureStream = canvas.captureStream(60);
+                const stream = recordCaptureStream;
+
+                // 选择支持的编码格式
+                const mimeTypes = [
+                    'video/webm;codecs=vp9',
+                    'video/webm;codecs=vp8',
+                    'video/webm',
+                    'video/mp4'
+                ];
+                let selectedMime = '';
+                for (const mime of mimeTypes) {
+                    if (MediaRecorder.isTypeSupported(mime)) {
+                        selectedMime = mime;
+                        break;
+                    }
+                }
+
+                const options = { videoBitsPerSecond: 8000000 };
+                if (selectedMime) options.mimeType = selectedMime;
+
+                mediaRecorder = new MediaRecorder(stream, options);
+
+                mediaRecorder.ondataavailable = (e) => {
+                    if (e.data.size > 0) recordedChunks.push(e.data);
+                };
+
+                mediaRecorder.onstop = () => {
+                    clearInterval(recordTimerInterval);
+                    if (recordCaptureStream) {
+                        recordCaptureStream.getTracks().forEach((t) => t.stop());
+                        recordCaptureStream = null;
+                    }
+                    btn.classList.remove('recording');
+                    btn.innerHTML = '⏺ 开始录制';
+
+                    const ext = (mediaRecorder.mimeType && mediaRecorder.mimeType.includes('mp4')) ? 'mp4' : 'webm';
+                    const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    const now = new Date();
+                    const ts = now.getFullYear() +
+                        String(now.getMonth()+1).padStart(2,'0') +
+                        String(now.getDate()).padStart(2,'0') + '_' +
+                        String(now.getHours()).padStart(2,'0') +
+                        String(now.getMinutes()).padStart(2,'0') +
+                        String(now.getSeconds()).padStart(2,'0');
+                    a.download = 'recording_' + ts + '.' + ext;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    console.log('🎬 录制完成，已导出: ' + a.download);
+                };
+
+                mediaRecorder.start(100); // 每100ms收集一次数据
+                recordStartTime = Date.now();
+                btn.classList.add('recording');
+                btn.innerHTML = '⏹ 停止录制 <span id="record-timer">00:00</span>';
+
+                recordTimerInterval = setInterval(() => {
+                    const elapsed = Date.now() - recordStartTime;
+                    const timerEl = document.getElementById('record-timer');
+                    if (timerEl) timerEl.textContent = formatTime(elapsed);
+                }, 500);
+
+                console.log('🎬 开始录制...');
+            }
+        }
+    </script>
+
+    <script src="run/game-shell.js?v=20260821-1"></script>
+    <script src="run/dream-flow.js?v=20260822-music-2"></script>
+    <script type="module">
+        const RUN_STATE_KEY = window.EndlessDream.STATE_KEY;
+        const launchParams = new URLSearchParams(window.location.search);
+        const requestedResumeSource = launchParams.get('resume');
+        const resumeSource = requestedResumeSource === 'greenhouse' || requestedResumeSource === 'upside'
+            ? requestedResumeSource
+            : null;
+        const returnedWithMirrorFlower = resumeSource === 'greenhouse' &&
+            launchParams.get('reward') === 'mirror-flower';
+        const returnedWithSunKey = resumeSource === 'upside' && launchParams.get('reward') === 'sun-key';
+        const autoStartRequested = launchParams.get('autostart') === '1';
+        const devMode = launchParams.get('dev') === '1';
+
+        function readCurrentRunState() {
+            return window.EndlessDream.getState();
+        }
+
+        let currentRunState = readCurrentRunState();
+        if (returnedWithMirrorFlower && !currentRunState.flowerOffered && !currentRunState.sunKey) {
+            currentRunState = window.EndlessDream.saveState({
+                mirrorComplete: true,
+                flowerOwned: true
+            });
+        }
+        if (returnedWithSunKey) {
+            currentRunState = window.EndlessDream.saveState({
+                mirrorComplete: true,
+                flowerOwned: false,
+                flowerOffered: true,
+                sunKey: true
+            });
+        }
+        let sunKeyOwned = currentRunState.sunKey === true;
+
+        function syncRunStateFromStorage() {
+            currentRunState = readCurrentRunState();
+            sunKeyOwned = currentRunState.sunKey === true;
+            window.__endlessDreamController?.refresh?.();
+        }
+
+        window.addEventListener('pageshow', syncRunStateFromStorage);
+
+        if (launchParams.has('resume') || launchParams.has('reward') || launchParams.has('autostart')) {
+            const cleanUrl = new URL(window.location.href);
+            cleanUrl.searchParams.delete('resume');
+            cleanUrl.searchParams.delete('reward');
+            cleanUrl.searchParams.delete('autostart');
+            window.history.replaceState(null, '', cleanUrl.href);
+        }
+
+        function buildPlacementCatalogFromPresets() {
+            return [
+                { kind: 'treadmill', title: '跑步机', icon: '🏃' },
+                { kind: 'pushCrate', title: '木箱（可推动）', icon: '📦' }
+            ];
+        }
+
+        const ROOM_GAME_CONFIG = Object.freeze({
+            id: 'room',
+            label: '无尽梦境',
+            sceneName: 'MoYuQi',
+            splatFile: 'Assert/scene/MoYuQi.sog',
+            panoFile: 'Assert/scene/MoYuQi_environment.png',
+            panoYaw: 0,
+            colliderFile: 'Assert/collision/MoYuQi.collision.glb',
+            voxelFile: 'Assert/collision/MoYuQi.voxel.json',
+            collisionFrame: 'world',
+            splatFrame: 'world',
+            splatPosition: Object.freeze([-0.2181476514, 0.1634744378, -0.2738597835]),
+            splatQuaternion: Object.freeze([0.0253960364, 0.6724043042, 0.7380295221, 0.0503975948]),
+            splatScale: 1.0956230830,
+            sourceVisualSha256: '291E2EF6B7F2801363F411F9E0C45BEFD4F95706E2712F4AE336027EAFE7675E',
+            // Stable point in the doorway-side component, with extra capsule clearance.
+            spawn: Object.freeze([-1.757, -0.55, -1.097]),
+            spawnYaw: -120.68,
+            spawnPitch: -10.5,
+            // The wall-to-bed passage is only about 0.46 m wide in the mapped
+            // room.  A 0.45 m capsule left no usable steering margin there.
+            characterRadius: 0.18,
+            characterHeight: 1.40,
+            cameraFov: 72,
+            cameraNearClip: 0.08,
+            cameraFarClip: 30,
+            eyeHeight: 1.21,
+            mirror: Object.freeze({
+                // Player-foot position on the clear floor directly in front of the
+                // full-length mirror. Keep interaction anchors in game-world space.
+                approachPosition: Object.freeze([0.35, -0.55, 0.60]),
+                enterRadius: 0.30,
+                exitRadius: 0.36,
+                maxVerticalDistance: 0.70
+            }),
+            sunflower: Object.freeze({
+                // The bouquet itself is around (0.75, 0.34, -1.08), behind the
+                // furniture collision. This is the measured, reachable floor point
+                // beside it, not the visual flower centre.
+                approachPosition: Object.freeze([0.43, -0.55, -1.08]),
+                enterRadius: 0.36,
+                exitRadius: 0.42,
+                maxVerticalDistance: 0.70
+            }),
+            exitDoor: Object.freeze({
+                // Mapped package door-threshold midpoint; the exterior remains blocked.
+                position: Object.freeze([-2.2129, -1.1456]),
+                radius: 0.42
+            })
+        });
+
+        const GAME_CONFIG = await new Promise((resolve) => {
+            const entryScreen = document.getElementById('entry-screen');
+            const enterButton = document.getElementById('enter-game');
+            const restartButton = document.getElementById('restart-dream');
+            const resumeFromGreenhouse = resumeSource === 'greenhouse';
+            const resumeFromUpside = resumeSource === 'upside';
+            const existingState = readCurrentRunState();
+            let launched = false;
+            const launch = (requestPointerLock) => {
+                if (launched) return;
+                launched = true;
+                window.EndlessDream.primeAudio();
+                entryScreen?.classList.add('hidden');
+                window.EndlessDreamGameShell?.ready();
+                const loading = document.getElementById('loading');
+                loading.classList.remove('is-modal');
+                loading.style.display = 'block';
+                if (requestPointerLock) {
+                    document.getElementById('application-canvas')?.requestPointerLock?.();
+                }
+                const launchConfig = resumeFromGreenhouse
+                    ? {
+                        ...ROOM_GAME_CONFIG,
+                        spawn: Object.freeze([-1.051, -0.05, -1.10]),
+                        spawnYaw: -90
+                    }
+                    : resumeFromUpside
+                    ? {
+                        ...ROOM_GAME_CONFIG,
+                        // Return beside the same real door used by the final objective.
+                        spawn: Object.freeze([-1.757, -0.55, -1.097]),
+                        spawnYaw: -100
+                    }
+                    : { ...ROOM_GAME_CONFIG };
+                resolve(launchConfig);
+            };
+            if (resumeFromGreenhouse || resumeFromUpside) {
+                launch(false);
+            } else if (autoStartRequested) {
+                launch(false);
+            } else {
+                const enterLabel = enterButton?.querySelector('span');
+                if (enterLabel && existingState.introComplete) {
+                    enterLabel.textContent = '继续梦境';
+                }
+                if (restartButton && existingState.startedAt > 0) {
+                    restartButton.hidden = false;
+                    restartButton.addEventListener('click', () => {
+                        window.EndlessDream.clearState();
+                        const freshUrl = new URL(window.location.href);
+                        freshUrl.search = '';
+                        window.location.replace(freshUrl.href);
+                    }, { once: true });
+                }
+                enterButton?.addEventListener('click', () => launch(true), { once: true });
+            }
+        });
+
+        const DEFAULT_SPLAT_EULER = Object.freeze([180, 0, 0]);
+
+        function getSceneSplatEuler(scene) {
+            if (Array.isArray(scene?.splatEuler) && scene.splatEuler.length >= 3 &&
+                scene.splatEuler.slice(0, 3).every(Number.isFinite)) {
+                return scene.splatEuler;
+            }
+            return scene?.splatFrame === 'world' ? [0, 0, 0] : DEFAULT_SPLAT_EULER;
+        }
+
+        function getSceneCharacterCapsule(scene) {
+            const radius = Number.isFinite(scene?.characterRadius) && scene.characterRadius > 0
+                ? scene.characterRadius
+                : 0.25;
+            const height = Number.isFinite(scene?.characterHeight) && scene.characterHeight > radius * 2
+                ? scene.characterHeight
+                : 1.40;
+            return { radius, height };
+        }
+
+        const SCENE_CONFIG = { ...ROOM_GAME_CONFIG, ...GAME_CONFIG };
+        (async () => {
+            const canvas = document.getElementById('application-canvas');
+            const loadingEl = document.getElementById('loading');
+            const loadingText = document.getElementById('loading-text');
+            const debugPanel = document.getElementById('debug-panel');
+            window.focus();
+
+            function updateLoading(text) {
+                loadingText.textContent = text;
+                console.log(text);
+            }
+
+            function promiseWithTimeout(promise, timeoutMs, message) {
+                let timeoutId;
+                const timeout = new Promise((_, reject) => {
+                    timeoutId = window.setTimeout(() => reject(new Error(message)), timeoutMs);
+                });
+                return Promise.race([promise, timeout]).finally(() => window.clearTimeout(timeoutId));
+            }
+
+            async function createGraphicsDeviceWithFallback() {
+                const createDevice = (deviceTypes) => Promise.resolve().then(() => pc.createGraphicsDevice(
+                    canvas,
+                    {
+                        deviceTypes,
+                        powerPreference: 'high-performance',
+                        antialias: false,
+                        preserveDrawingBuffer: false,
+                        alpha: false
+                    }
+                ));
+
+                // WebGL2 is broadly available on GitHub Pages. It also avoids a
+                // browser-specific WebGPU probe hanging before the loading timeout.
+                try {
+                    return await promiseWithTimeout(
+                        createDevice([pc.DEVICETYPE_WEBGL2]),
+                        15000,
+                        'WebGL2 初始化超时'
+                    );
+                } catch (webglError) {
+                    console.warn('WebGL2 初始化失败，尝试 WebGPU:', webglError);
+                    return await promiseWithTimeout(
+                        createDevice([pc.DEVICETYPE_WEBGPU]),
+                        15000,
+                        '图形设备初始化超时'
+                    );
+                }
+            }
+
+            try {
+                updateLoading('初始化图形设备...');
+
+                const device = await createGraphicsDeviceWithFallback();
+                if (devMode) {
+                    console.log(`图形后端: ${device.deviceType || device.constructor?.name || 'unknown'}`);
+                }
+                const nativePixelRatio = Number.isFinite(window.devicePixelRatio)
+                    ? Math.max(0.75, window.devicePixelRatio)
+                    : 1;
+                // A stable 1:1 render buffer stays crisp at the target 720p
+                // viewport without resizing the WebGPU swap chain during play.
+                const renderPixelRatio = Math.min(nativePixelRatio, 1.0);
+                device.maxPixelRatio = renderPixelRatio;
+                if (devMode) {
+                    console.log(`渲染分辨率: 固定 DPR ${renderPixelRatio.toFixed(2)}`);
+                }
+
+                const createOptions = new pc.AppOptions();
+                createOptions.graphicsDevice = device;
+                createOptions.mouse = new pc.Mouse(document.body);
+                createOptions.touch = new pc.TouchDevice(document.body);
+                
+                createOptions.componentSystems = [
+                    pc.RenderComponentSystem,
+                    pc.CameraComponentSystem,
+                    pc.LightComponentSystem,
+                    pc.ScriptComponentSystem,
+                    pc.GSplatComponentSystem,
+                    pc.AnimComponentSystem,
+                    pc.ModelComponentSystem,
+                    pc.AnimationComponentSystem
+                ];
+                createOptions.resourceHandlers = [
+                    pc.TextureHandler,
+                    pc.ContainerHandler,
+                    pc.ScriptHandler,
+                    pc.GSplatHandler,
+                    pc.AnimClipHandler,
+                    pc.AnimStateGraphHandler,
+                    pc.JsonHandler,
+                    pc.ModelHandler,
+                    pc.MaterialHandler,
+                    pc.AnimationHandler
+                ];
+
+                const app = new pc.AppBase(canvas);
+                app.init(createOptions);
+
+                app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
+                app.setCanvasResolution(pc.RESOLUTION_AUTO);
+                const onResize = () => app.resizeCanvas();
+                window.addEventListener('resize', onResize);
+                app.on('destroy', () => window.removeEventListener('resize', onResize));
+
+                updateLoading(`加载场景: ${SCENE_CONFIG.sceneName}...`);
+
+                const assets = {
+                    splat: new pc.Asset('gaussian-splat', 'gsplat', {
+                        url: SCENE_CONFIG.splatFile
+                    }),
+                    panorama: new pc.Asset('scene-panorama', 'texture', {
+                        url: SCENE_CONFIG.panoFile
+                    }, {
+                        srgb: true
+                    }),
+                    collisionMesh: new pc.Asset('collision-mesh', 'container', {
+                        url: SCENE_CONFIG.colliderFile
+                    }),
+                    blackCat: new pc.Asset('black-cat', 'container', {
+                        url: 'Assert/npc/black_cat_walk_game.glb'
+                    })
+                };
+                if (devMode) {
+                    assets.treadmillGlb = new pc.Asset('treadmill-glb', 'container', {
+                        url: 'Assert/跑步机.glb'
+                    });
+                }
+
+                const assetListLoader = new pc.AssetListLoader(Object.values(assets), app.assets);
+                // 静态站点上的大场景资源在弱网或旧缓存下可能长期无回调。
+                // 超时后进入可恢复错误界面，而不是无限停留在“加载场景”。
+                await new Promise((resolve, reject) => {
+                    let settled = false;
+                    const timeoutId = window.setTimeout(() => {
+                        if (!settled) {
+                            settled = true;
+                            reject(new Error('场景资源加载超时，请检查网络后重新尝试'));
+                        }
+                    }, 300000);
+                    assetListLoader.load((err) => {
+                        if (settled) return;
+                        settled = true;
+                        window.clearTimeout(timeoutId);
+                        if (err) reject(new Error(`资源加载失败: ${err}`));
+                        else resolve();
+                    });
+                });
+
+                updateLoading('创建场景...');
+                app.start();
+
+                // Neutral keeps bright yellows saturated instead of bleaching them toward white.
+                app.scene.toneMapping = pc.TONEMAP_NEUTRAL;
+                app.scene.exposure = 1.0;
+                app.scene.gammaCorrection = pc.GAMMA_SRGB;
+                app.scene.gsplat.antiAlias = true;
+                // Cull sub-pixel and negligible splats before they can shimmer while moving.
+                app.scene.gsplat.minPixelSize = 2;
+                app.scene.gsplat.minContribution = 3;
+                app.scene.gsplat.foveationStrength = 0;
+                // Refresh view-dependent color in smaller increments instead of visible 10-degree steps.
+                app.scene.gsplat.colorUpdateAngle = 2;
+                app.scene.gsplat.splatBudget = 0;
+
+                function createSceneSkybox(panoramaAsset) {
+                    if (!panoramaAsset?.resource) {
+                        throw new Error('场景全景背景资源为空');
+                    }
+                    return pc.EnvLighting.generateSkyboxCubemap(panoramaAsset.resource, 512);
+                }
+
+                function applySceneSkybox(skybox, sceneConfig) {
+                    app.scene.sky.type = pc.SKYTYPE_INFINITE;
+                    app.scene.skybox = skybox;
+                    app.scene.skyboxRotation = new pc.Quat().setFromEulerAngles(
+                        0,
+                        Number.isFinite(sceneConfig?.panoYaw) ? sceneConfig.panoYaw : 0,
+                        0
+                    );
+                }
+
+                let activeSkybox = createSceneSkybox(assets.panorama);
+                applySceneSkybox(activeSkybox, SCENE_CONFIG);
+                app.on('destroy', () => {
+                    activeSkybox?.destroy();
+                    activeSkybox = null;
+                });
+
+                // ========== 创建高斯场景实体 ==========
+                let splatEntity = new pc.Entity('GaussianScene', app);
+                splatEntity.addComponent('gsplat', {
+                    asset: assets.splat,
+                    splatScale: 1.0,
+                    opacityScale: 1.0,
+                    renderOrder: 0,
+                    // The legacy path remains pixel-stable while the camera is stationary.
+                    unified: false
+                });
+                // Non-unified rendering owns a per-component material, so scene-level
+                // gsplat quality settings do not configure this active render path.
+                const splatMaterial = splatEntity.gsplat.unified
+                    ? null
+                    : splatEntity.gsplat.material;
+                if (splatMaterial) {
+                    splatMaterial.setDefine('GSPLAT_AA', true);
+                    // Preserve thin opaque coverage on the yellow door and other hard edges.
+                    // More aggressive values expose the pale skybox through the splat surface.
+                    splatMaterial.setParameter('minPixelSize', 2);
+                    splatMaterial.setParameter('alphaClipForward', 1 / 255);
+                    splatMaterial.update();
+                }
+                const splatPosition = SCENE_CONFIG.splatPosition;
+                const splatQuaternion = SCENE_CONFIG.splatQuaternion;
+                const splatScale = SCENE_CONFIG.splatScale;
+                if (Array.isArray(splatPosition) && splatPosition.length >= 3) {
+                    splatEntity.setLocalPosition(
+                        splatPosition[0], splatPosition[1], splatPosition[2]
+                    );
+                }
+                if (Array.isArray(splatQuaternion) && splatQuaternion.length >= 4) {
+                    splatEntity.setLocalRotation(new pc.Quat(
+                        splatQuaternion[0], splatQuaternion[1],
+                        splatQuaternion[2], splatQuaternion[3]
+                    ));
+                } else {
+                    const initialSplatEuler = getSceneSplatEuler(SCENE_CONFIG);
+                    splatEntity.setLocalEulerAngles(
+                        initialSplatEuler[0], initialSplatEuler[1], initialSplatEuler[2]
+                    );
+                }
+                if (Number.isFinite(splatScale) && splatScale > 0) {
+                    splatEntity.setLocalScale(splatScale, splatScale, splatScale);
+                }
+                app.root.addChild(splatEntity);
+
+                // Main-room-only visual tint for the open exit door. The source
+                // splats contain broad pale patches across the panel, so this
+                // thin translucent surface restores a stable warm-yellow base
+                // without changing collision or interaction.
+                let exitDoorVisualOverlay = null;
+                if (SCENE_CONFIG.id === 'room' && SCENE_CONFIG.exitDoor) {
+                    // Measured hinge/free-edge coordinates for the visible door leaf.
+                    const hinge = [-2.24, -1.55];
+                    const free = [-1.56, -1.50];
+                    const dx = free[0] - hinge[0];
+                    const dz = free[1] - hinge[1];
+                    const doorWidth = Math.hypot(dx, dz);
+                    const tangent = [dx / doorWidth, dz / doorWidth];
+                    const doorNormal = [-tangent[1], tangent[0]];
+                    const doorYaw = Math.atan2(-tangent[1], tangent[0]) * 180 / Math.PI;
+                    const normalOffset = 0.018;
+
+                    const doorMaterial = new pc.StandardMaterial();
+                    // Keep the source splat detail visible through the warm base.
+                    doorMaterial.diffuse = new pc.Color(0.98, 0.70, 0.12);
+                    doorMaterial.emissive = new pc.Color(0.10, 0.040, 0.004);
+                    doorMaterial.emissiveIntensity = 0.28;
+                    doorMaterial.opacity = 0.78;
+                    doorMaterial.blendType = pc.BLEND_NORMAL;
+                    doorMaterial.depthWrite = false;
+                    doorMaterial.depthTest = false;
+                    doorMaterial.cull = pc.CULLFACE_NONE;
+                    doorMaterial.useLighting = false;
+                    doorMaterial.update();
+
+                    exitDoorVisualOverlay = new pc.Entity('ExitDoorVisualOverlay', app);
+                    exitDoorVisualOverlay.addComponent('render', {
+                        type: 'box',
+                        material: doorMaterial,
+                        castShadows: false,
+                        receiveShadows: false
+                    });
+                    exitDoorVisualOverlay.setPosition(
+                        hinge[0] + dx * 0.5 + doorNormal[0] * normalOffset,
+                        0.78,
+                        hinge[1] + dz * 0.5 + doorNormal[1] * normalOffset
+                    );
+                    exitDoorVisualOverlay.setEulerAngles(0, doorYaw, 0);
+                    exitDoorVisualOverlay.setLocalScale(doorWidth, 1.55, 0.012);
+                    exitDoorVisualOverlay.render.renderOrder = 10;
+                    app.root.addChild(exitDoorVisualOverlay);
+                }
+
+                // ========== 碰撞网格可视化（仅用于按 1 键查看）==========
+                updateLoading('加载碰撞网格...');
+
+                let collisionMeshEntity = null;
+                let collisionMeshVisible = false;
+
+                function createCollisionMeshEntity(containerAsset, sceneConfig) {
+                    if (!containerAsset?.resource) return null;
+                    const entity = containerAsset.resource.instantiateRenderEntity();
+                    entity.name = 'CollisionMesh';
+                    entity.enabled = collisionMeshVisible;
+
+                    const material = new pc.StandardMaterial();
+                    material.diffuse = new pc.Color(0.15, 0.95, 0.45);
+                    material.emissive = new pc.Color(0.10, 0.55, 0.28);
+                    material.opacity = 0.26;
+                    material.blendType = pc.BLEND_NORMAL;
+                    material.depthWrite = false;
+                    material.cull = pc.CULLFACE_NONE;
+                    material.update();
+
+                    entity.findComponents('render').forEach(render => {
+                        render.meshInstances.forEach(mi => {
+                            mi.material = material;
+                        });
+                    });
+
+                    if (sceneConfig.collisionFrame !== 'world') {
+                        entity.setLocalEulerAngles(180, 0, 0);
+                    }
+                    app.root.addChild(entity);
+                    return entity;
+                }
+
+                if (assets.collisionMesh.resource) {
+                    collisionMeshEntity = createCollisionMeshEntity(assets.collisionMesh, SCENE_CONFIG);
+                    console.log(`✅ 碰撞网格可视化 (${SCENE_CONFIG.colliderFile}) 已就绪`);
+                } else {
+                    console.warn('⚠️ 碰撞网格加载失败（仅影响可视化，不影响碰撞）');
+                }
+
+                // ========== 加载体素碰撞数据（splat-transform 输出的稀疏八叉树）==========
+                updateLoading('加载体素碰撞数据...');
+
+                let voxelCollision = null;         // VoxelCollision 实例，场景碰撞的唯一权威数据源
+
+                function assertCollisionMatchesScene(collision) {
+                    const assetMeta = collision?.meta?.asset;
+                    const transform = assetMeta?.gameSplatTransform;
+                    const nearlyEqual = (a, b) => Number.isFinite(a) && Number.isFinite(b) &&
+                        Math.abs(a - b) <= 1e-6;
+                    const sameArray = (actual, expected) =>
+                        Array.isArray(actual) && Array.isArray(expected) &&
+                        actual.length >= expected.length &&
+                        expected.every((value, index) => nearlyEqual(actual[index], value));
+
+                    if (!assetMeta || assetMeta.surfaceOccupancy !== true ||
+                        assetMeta.capsuleCarve !== false) {
+                        throw new Error('体素碰撞缺少表面占用数据契约');
+                    }
+                    if (!sameArray(transform?.position, SCENE_CONFIG.splatPosition) ||
+                        !sameArray(transform?.quaternionXyzw, SCENE_CONFIG.splatQuaternion) ||
+                        !nearlyEqual(transform?.scale, SCENE_CONFIG.splatScale)) {
+                        throw new Error('体素碰撞与当前高斯场景变换不一致，请重新生成碰撞资产');
+                    }
+                    const expectedVisual = String(SCENE_CONFIG.sourceVisualSha256 || '').toUpperCase();
+                    const actualVisual = String(assetMeta.sourceVisualSha256 || '').toUpperCase();
+                    if (expectedVisual && actualVisual !== expectedVisual) {
+                        throw new Error('体素碰撞与当前高斯场景来源不一致');
+                    }
+                }
+
+                if (SCENE_CONFIG.voxelFile) {
+                    try {
+                        voxelCollision = await loadVoxelCollision(SCENE_CONFIG.voxelFile, {
+                            frame: SCENE_CONFIG.collisionFrame
+                        });
+                        assertCollisionMatchesScene(voxelCollision);
+                        console.log('✅ 体素碰撞已加载:', voxelCollision.describe());
+                    } catch (e) {
+                        console.error('❌ 体素碰撞加载或场景契约校验失败:', e);
+                        throw e;
+                    }
+                } else {
+                    console.warn('⚠️ 本场景未配置体素碰撞数据（data-voxel），请用 tools\\generate_room_collision.py 重建');
+                }
+
+                // 摆放道具 / 可推木箱 / 跑步机等动态物体的碰撞三角形（与场景体素碰撞相互独立）
+                let propCollisionTriangles = [];
+                let sceneCameraBounds = {
+                    valid: false,
+                    minX: 0, maxX: 0, minY: 0, maxY: 0, minZ: 0, maxZ: 0,
+                    pad: 0.5, splatMargin: 0.65, circExtraInset: 0.42,
+                    edgeLookMargin: 0.64, edgeLookPerMeter: 0.30, edgeLookFovScale: 0.28,
+                    camCircValid: false, camCircCx: 0, camCircCz: 0, camCircR: 0,
+                    maxCameraDistance: 10, minCameraDistance: 0.5,
+                    maxPitchDeg: 60, minPitchDeg: -10
+                };
+                const tmpWorldSplatAabb = new pc.BoundingBox();
+                function getSceneCameraFov() {
+                    return Number.isFinite(SCENE_CONFIG.cameraFov) ? SCENE_CONFIG.cameraFov : 75;
+                }
+
+                function recomputeSceneCameraBounds() {
+                    sceneCameraBounds.camCircValid = false;
+                    sceneCameraBounds.pad = Number.isFinite(SCENE_CONFIG.cameraBoundsPadding)
+                        ? Math.max(0.05, SCENE_CONFIG.cameraBoundsPadding)
+                        : 0.5;
+                    let minX = Infinity;
+                    let maxX = -Infinity;
+                    let minY = Infinity;
+                    let maxY = -Infinity;
+                    let minZ = Infinity;
+                    let maxZ = -Infinity;
+                    // 场景边界直接取与视觉场景同一变换生成的体素世界包围盒。
+                    if (voxelCollision) {
+                        const vb = voxelCollision.getWorldBounds();
+                        minX = Math.min(minX, vb.min[0]);
+                        maxX = Math.max(maxX, vb.max[0]);
+                        minY = Math.min(minY, vb.min[1]);
+                        maxY = Math.max(maxY, vb.max[1]);
+                        minZ = Math.min(minZ, vb.min[2]);
+                        maxZ = Math.max(maxZ, vb.max[2]);
+                    }
+                    for (const tri of propCollisionTriangles) {
+                        for (const v of [tri.v0, tri.v1, tri.v2]) {
+                            minX = Math.min(minX, v.x);
+                            maxX = Math.max(maxX, v.x);
+                            minY = Math.min(minY, v.y);
+                            maxY = Math.max(maxY, v.y);
+                            minZ = Math.min(minZ, v.z);
+                            maxZ = Math.max(maxZ, v.z);
+                        }
+                    }
+                    const gsplatComp = splatEntity?.gsplat;
+                    const localSplatAabb = gsplatComp?.customAabb;
+                    if (localSplatAabb && !voxelCollision && SCENE_CONFIG.cameraBoundsMode !== 'voxel-box') {
+                        const sm = sceneCameraBounds.splatMargin;
+                        tmpWorldSplatAabb.setFromTransformedAabb(localSplatAabb, splatEntity.getWorldTransform());
+                        const c = tmpWorldSplatAabb.center;
+                        const h = tmpWorldSplatAabb.halfExtents;
+                        minX = Math.min(minX, c.x - h.x - sm);
+                        maxX = Math.max(maxX, c.x + h.x + sm);
+                        minY = Math.min(minY, c.y - h.y - sm);
+                        maxY = Math.max(maxY, c.y + h.y + sm);
+                        minZ = Math.min(minZ, c.z - h.z - sm);
+                        maxZ = Math.max(maxZ, c.z + h.z + sm);
+                        const circInset = sceneCameraBounds.pad + sm + sceneCameraBounds.circExtraInset;
+                        const r = Math.min(h.x, h.z) - circInset;
+                        if (r > 0.12) {
+                            sceneCameraBounds.camCircValid = true;
+                            sceneCameraBounds.camCircCx = c.x;
+                            sceneCameraBounds.camCircCz = c.z;
+                            sceneCameraBounds.camCircR = r;
+                        }
+                    }
+                    if (!Number.isFinite(minX) || minX >= maxX || minZ >= maxZ || minY > maxY) {
+                        sceneCameraBounds.valid = false;
+                        sceneCameraBounds.camCircValid = false;
+                        return;
+                    }
+                    sceneCameraBounds.minX = minX;
+                    sceneCameraBounds.maxX = maxX;
+                    sceneCameraBounds.minY = minY;
+                    sceneCameraBounds.maxY = maxY;
+                    sceneCameraBounds.minZ = minZ;
+                    sceneCameraBounds.maxZ = maxZ;
+                    sceneCameraBounds.valid = true;
+                    const spanH = Math.max(0.01, Math.min(maxX - minX, maxZ - minZ));
+                    let maxD = Math.min(6, Math.max(0.85, spanH * 0.22));
+                    if (sceneCameraBounds.camCircValid) {
+                        maxD = Math.min(maxD, Math.max(0.85, sceneCameraBounds.camCircR * 0.28));
+                        sceneCameraBounds.maxPitchDeg = 32;
+                        sceneCameraBounds.minPitchDeg = 8;
+                        sceneCameraBounds.minCameraDistance = Math.max(0.88, Math.min(1.85, sceneCameraBounds.camCircR * 0.125));
+                    } else {
+                        sceneCameraBounds.maxPitchDeg = 60;
+                        sceneCameraBounds.minPitchDeg = -10;
+                        sceneCameraBounds.minCameraDistance = 0.5;
+                    }
+                    if (Number.isFinite(SCENE_CONFIG.cameraDistanceMax)) {
+                        maxD = Math.max(0.55, SCENE_CONFIG.cameraDistanceMax);
+                    }
+                    if (Number.isFinite(SCENE_CONFIG.cameraDistanceMin)) {
+                        sceneCameraBounds.minCameraDistance = Math.max(0.35, SCENE_CONFIG.cameraDistanceMin);
+                    }
+                    if (Number.isFinite(SCENE_CONFIG.cameraPitchMin)) {
+                        sceneCameraBounds.minPitchDeg = SCENE_CONFIG.cameraPitchMin;
+                    }
+                    if (Number.isFinite(SCENE_CONFIG.cameraPitchMax)) {
+                        sceneCameraBounds.maxPitchDeg = SCENE_CONFIG.cameraPitchMax;
+                    }
+                    sceneCameraBounds.maxCameraDistance = maxD;
+                    if (sceneCameraBounds.camCircValid && sceneCameraBounds.minCameraDistance > sceneCameraBounds.maxCameraDistance - 0.12) {
+                        sceneCameraBounds.minCameraDistance = Math.max(0.55, sceneCameraBounds.maxCameraDistance - 0.12);
+                    }
+                    console.log(`📷 相机软边界 AABB: X[${minX.toFixed(2)}, ${maxX.toFixed(2)}] Y[${minY.toFixed(2)}, ${maxY.toFixed(2)}] Z[${minZ.toFixed(2)}, ${maxZ.toFixed(2)}] | 最大距离≈${maxD.toFixed(2)} 圆裁剪=${sceneCameraBounds.camCircValid}`);
+                }
+
+                function clampCameraPositionToScene(px, py, pz, orbitDistance = 0) {
+                    if (!sceneCameraBounds.valid) {
+                        return { x: px, y: py, z: pz };
+                    }
+                    const b = sceneCameraBounds;
+                    const pad = b.pad;
+                    let minX = b.minX + pad;
+                    let maxX = b.maxX - pad;
+                    let minZ = b.minZ + pad;
+                    let maxZ = b.maxZ - pad;
+                    if (minX > maxX) {
+                        const cx = (b.minX + b.maxX) * 0.5;
+                        minX = maxX = cx;
+                    }
+                    if (minZ > maxZ) {
+                        const cz = (b.minZ + b.maxZ) * 0.5;
+                        minZ = maxZ = cz;
+                    }
+                    const spanY = Math.max(0.5, b.maxY - b.minY);
+                    let yLo = b.minY - 0.35;
+                    let yHi = b.maxY + Math.min(14, spanY * 0.85 + 6);
+                    if (b.camCircValid) {
+                        yLo = b.minY + 0.18;
+                        yHi = b.maxY + Math.min(2.45, spanY * 0.26 + 0.85);
+                    }
+                    if (SCENE_CONFIG.id === 'room') {
+                        yLo = b.minY + pad;
+                        yHi = b.maxY - pad;
+                    }
+                    let x = pc.math.clamp(px, minX, maxX);
+                    let z = pc.math.clamp(pz, minZ, maxZ);
+                    if (b.camCircValid && b.camCircR > 0) {
+                        const dx = x - b.camCircCx;
+                        const dz = z - b.camCircCz;
+                        const len = Math.sqrt(dx * dx + dz * dz);
+                        let inward = b.edgeLookMargin + orbitDistance * b.edgeLookPerMeter;
+                        if (orbitDistance > 0 && camera && camera.camera && camera.camera.fov != null) {
+                            const halfFov = camera.camera.fov * Math.PI / 360;
+                            inward += orbitDistance * Math.tan(halfFov) * b.edgeLookFovScale;
+                        }
+                        inward = Math.min(inward, b.camCircR * 0.52);
+                        const rEff = Math.max(0.06, b.camCircR - inward);
+                        if (len > rEff && len > 1e-6) {
+                            const s = rEff / len;
+                            x = b.camCircCx + dx * s;
+                            z = b.camCircCz + dz * s;
+                        }
+                    }
+                    return {
+                        x,
+                        y: pc.math.clamp(py, yLo, yHi),
+                        z
+                    };
+                }
+                
+                // 场景碰撞已完全由 splat-transform 生成的体素八叉树接管：
+                // 既不需要手工对齐参数（旧方案的 posX/posY/posZ/rotY/scale 魔法数字），
+                // 也不需要在 CPU 端逐帧遍历数万个碰撞三角形。
+                recomputeSceneCameraBounds();
+
+                // ========== 碰撞系统 ==========
+                let collisionEnabled = true;
+                let splatVisible = true;  // 高斯场景可视化开关
+                
+                // ========== 角色碰撞体参数（用于可视化） ==========
+                let characterColliderVisible = false;
+                let characterColliderEntity = null;
+                let characterFootEntity = null;
+                
+                // 体素保存碰撞表面；运行时胶囊尺寸可以独立调节。
+                let { radius: characterRadius, height: characterHeight } = getSceneCharacterCapsule(SCENE_CONFIG);
+                const characterColliderConfig = {
+                    offsetX: 0,
+                    offsetY: 0,
+                    offsetZ: 0,
+                    width: characterRadius,
+                    height: characterHeight,
+                    depth: characterRadius
+                };
+
+                function syncCharacterColliderDimensions() {
+                    characterColliderConfig.width = characterRadius;
+                    characterColliderConfig.height = characterHeight;
+                    characterColliderConfig.depth = characterRadius;
+                    characterColliderEntity?.setLocalScale(
+                        characterRadius * 2,
+                        characterHeight,
+                        characterRadius * 2
+                    );
+                }
+
+                /** 轴对齐盒 12 三角补碰撞（部分 GLB 无 render 或 mesh 未就绪时用） */
+                function appendAxisAlignedBoxCollisionTris(cx, cy, cz, hx, hy, hz, ownerEntity, stompOwnerEntity = ownerEntity) {
+                    const x0 = cx - hx;
+                    const x1 = cx + hx;
+                    const y0 = cy - hy;
+                    const y1 = cy + hy;
+                    const z0 = cz - hz;
+                    const z1 = cz + hz;
+                    const owner = ownerEntity || null;
+                    const stomp = stompOwnerEntity || null;
+                    let c = 0;
+                    const push = (ax, ay, az, bx, by, bz, tcx, tcy, tcz) => {
+                        propCollisionTriangles.push({
+                            v0: new pc.Vec3(ax, ay, az),
+                            v1: new pc.Vec3(bx, by, bz),
+                            v2: new pc.Vec3(tcx, tcy, tcz),
+                            owner,
+                            stompOwner: stomp
+                        });
+                        c++;
+                    };
+                    push(x0, y1, z0, x0, y1, z1, x1, y1, z1);
+                    push(x0, y1, z0, x1, y1, z1, x1, y1, z0);
+                    push(x0, y0, z0, x1, y0, z1, x0, y0, z1);
+                    push(x0, y0, z0, x1, y0, z0, x1, y0, z1);
+                    push(x0, y0, z1, x1, y0, z1, x1, y1, z1);
+                    push(x0, y0, z1, x1, y1, z1, x0, y1, z1);
+                    push(x1, y0, z0, x0, y0, z0, x0, y1, z0);
+                    push(x1, y0, z0, x0, y1, z0, x1, y1, z0);
+                    push(x1, y0, z0, x1, y0, z1, x1, y1, z1);
+                    push(x1, y0, z0, x1, y1, z1, x1, y1, z0);
+                    push(x0, y0, z1, x0, y0, z0, x0, y1, z0);
+                    push(x0, y0, z1, x0, y1, z0, x0, y1, z1);
+                    return c;
+                }
+
+                /** findComponents + 手动子树遍历，兼容不同版本引擎；去重同一 component */
+                function collectRenderModelComponentsUnder(rootEnt) {
+                    const set = new Set();
+                    if (rootEnt.findComponents) {
+                        rootEnt.findComponents('render').forEach((c) => { if (c) set.add(c); });
+                        rootEnt.findComponents('model').forEach((c) => { if (c) set.add(c); });
+                    }
+                    function walk(ent) {
+                        try {
+                            if (ent.render) set.add(ent.render);
+                            if (ent.model) set.add(ent.model);
+                        } catch (e) { /* ignore */ }
+                        const ch = ent.children;
+                        for (let i = 0; i < ch.length; i++) walk(ch[i]);
+                    }
+                    walk(rootEnt);
+                    return Array.from(set);
+                }
+
+                /** 将子树下 render / model 的 mesh 三角变换到世界坐标并追加；stompOwner 供踩踏消灭 */
+                function appendWorldMeshTrianglesFromRenderRoot(renderRoot, label, ownerEntity, stompOwnerEntity = ownerEntity) {
+                    let triCount = 0;
+                    const owner = ownerEntity || null;
+                    const stomp = stompOwnerEntity || null;
+                    function addTrisFromMesh(mesh, worldMat) {
+                        if (!mesh) return;
+                        const positions = [];
+                        mesh.getPositions(positions);
+                        if (positions.length < 9) return;
+                        const indices = [];
+                        mesh.getIndices(indices);
+                        const addTri = (ia, ib, ic) => {
+                            const oa = ia * 3;
+                            const ob = ib * 3;
+                            const oc = ic * 3;
+                            const v0 = new pc.Vec3(positions[oa], positions[oa + 1], positions[oa + 2]);
+                            const v1 = new pc.Vec3(positions[ob], positions[ob + 1], positions[ob + 2]);
+                            const v2 = new pc.Vec3(positions[oc], positions[oc + 1], positions[oc + 2]);
+                            worldMat.transformPoint(v0, v0);
+                            worldMat.transformPoint(v1, v1);
+                            worldMat.transformPoint(v2, v2);
+                            propCollisionTriangles.push({ v0, v1, v2, owner, stompOwner: stomp });
+                            triCount++;
+                        };
+                        if (indices.length >= 3) {
+                            for (let i = 0; i < indices.length; i += 3) {
+                                addTri(indices[i], indices[i + 1], indices[i + 2]);
+                            }
+                        } else {
+                            const nV = Math.floor(positions.length / 3);
+                            for (let i = 0; i + 2 < nV; i += 3) {
+                                addTri(i, i + 1, i + 2);
+                            }
+                        }
+                    }
+                    function addFromComponent(comp) {
+                        if (!comp || !comp.meshInstances || !comp.meshInstances.length) return;
+                        const hostEntity = comp.entity;
+                        for (let mi = 0; mi < comp.meshInstances.length; mi++) {
+                            const inst = comp.meshInstances[mi];
+                            const mesh = inst.mesh;
+                            const graphNode = inst.node || hostEntity;
+                            if (!graphNode || !graphNode.getWorldTransform) continue;
+                            const skinned = !!(mesh && mesh.skin) || !!inst.skinInstance;
+                            const wbox = inst.aabb;
+                            if (skinned) {
+                                if (wbox && wbox.halfExtents) {
+                                    const hx = Math.max(0.04, wbox.halfExtents.x);
+                                    const hy = Math.max(0.04, wbox.halfExtents.y);
+                                    const hz = Math.max(0.04, wbox.halfExtents.z);
+                                    triCount += appendAxisAlignedBoxCollisionTris(
+                                        wbox.center.x, wbox.center.y, wbox.center.z,
+                                        hx, hy, hz,
+                                        owner,
+                                        stomp
+                                    );
+                                }
+                                continue;
+                            }
+                            if (!mesh) continue;
+                            const t0 = triCount;
+                            addTrisFromMesh(mesh, graphNode.getWorldTransform());
+                            if (triCount === t0 && wbox && wbox.halfExtents) {
+                                const hx = Math.max(0.04, wbox.halfExtents.x);
+                                const hy = Math.max(0.04, wbox.halfExtents.y);
+                                const hz = Math.max(0.04, wbox.halfExtents.z);
+                                triCount += appendAxisAlignedBoxCollisionTris(
+                                    wbox.center.x, wbox.center.y, wbox.center.z,
+                                    hx, hy, hz,
+                                    owner,
+                                    stomp
+                                );
+                            }
+                        }
+                    }
+                    const comps = collectRenderModelComponentsUnder(renderRoot);
+                    for (let ci = 0; ci < comps.length; ci++) addFromComponent(comps[ci]);
+                    if (label) {
+                        console.log(`🧱 ${label} 网格碰撞: 追加 ${triCount} 个三角形（${comps.length} 个 render/model 组件）`);
+                    }
+                    return triCount;
+                }
+
+                // 场景碰撞完全来自体素八叉树，不再需要手工摆放的补充碰撞盒。
+                recomputeSceneCameraBounds();
+
+                // ========== 碰撞检测（场景 = 体素八叉树，动态道具 = 三角形）==========
+                // 房间使用 1.20/0.15，其余场景使用 1.40/0.25；切换时会同步更新。
+
+                // 2.5cm 体素下允许跨越小门槛，但床与窗台仍必须通过跳跃抵达。
+                const GROUND_MAX_STEP_UP = 0.16;
+                const GROUND_MAX_STEP_DOWN = 0.24;
+                const GROUND_SUPPORT_DROP = 0.14;
+                const GROUND_SKIN = 0.015;
+                const GROUND_SUPPORT_RADIUS = Math.min(characterRadius * 0.45, 0.10);
+                const GROUND_LOCAL_RELIEF_RADIUS = Math.min(characterRadius * 0.8, 0.18);
+                const GROUND_MAX_LOCAL_RELIEF = 0.10;
+                
+                // 重力系统
+                let velocityY = 0;             // 垂直速度
+                const gravity = -14;
+                const groundY = -50;            // 安全底线（远低于场景，只防止掉出世界）
+                let isGrounded = false;        // 是否在地面上
+                
+                // 跳跃参数
+                const jumpForce = 4.5;
+                const STOMP_MIN_DOWN_VEL = -0.35;  // 非跳跃时下落速度阈值（略放宽，避免落地帧速度过小）
+                const STOMP_BOUNCE_VEL = 3.2;
+                let isJumping = false;         // 是否正在跳跃中
+                let positionLocked = false;    // L键锁定位置，防止下落
+                
+                // 点到三角形的最近距离（2D投影，用于XZ平面碰撞）
+                // 改进版：真正计算点到三角形边的距离
+                function pointToTriangleDistXZ(px, pz, v0, v1, v2) {
+                    // 检查点是否在三角形内部
+                    function sign(p1x, p1z, p2x, p2z, p3x, p3z) {
+                        return (p1x - p3x) * (p2z - p3z) - (p2x - p3x) * (p1z - p3z);
+                    }
+                    
+                    const d1 = sign(px, pz, v0.x, v0.z, v1.x, v1.z);
+                    const d2 = sign(px, pz, v1.x, v1.z, v2.x, v2.z);
+                    const d3 = sign(px, pz, v2.x, v2.z, v0.x, v0.z);
+                    
+                    const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+                    const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+                    
+                    // 点在三角形内部
+                    if (!(hasNeg && hasPos)) {
+                        return 0;
+                    }
+                    
+                    // 点在三角形外部，计算到三条边的最近距离
+                    function pointToSegmentDistSq(px, pz, ax, az, bx, bz) {
+                        const abx = bx - ax, abz = bz - az;
+                        const apx = px - ax, apz = pz - az;
+                        const t = Math.max(0, Math.min(1, (apx * abx + apz * abz) / (abx * abx + abz * abz + 0.0001)));
+                        const closestX = ax + t * abx;
+                        const closestZ = az + t * abz;
+                        const dx = px - closestX, dz = pz - closestZ;
+                        return dx * dx + dz * dz;
+                    }
+                    
+                    const d01 = pointToSegmentDistSq(px, pz, v0.x, v0.z, v1.x, v1.z);
+                    const d12 = pointToSegmentDistSq(px, pz, v1.x, v1.z, v2.x, v2.z);
+                    const d20 = pointToSegmentDistSq(px, pz, v2.x, v2.z, v0.x, v0.z);
+                    
+                    return Math.sqrt(Math.min(d01, d12, d20));
+                }
+
+                function pointToSegmentDistXZ(px, pz, ax, az, bx, bz) {
+                    const abx = bx - ax, abz = bz - az;
+                    const apx = px - ax, apz = pz - az;
+                    const t = Math.max(0, Math.min(1, (apx * abx + apz * abz) / (abx * abx + abz * abz + 1e-10)));
+                    const cx = ax + t * abx, cz = az + t * abz;
+                    const dx = px - cx, dz = pz - cz;
+                    return Math.sqrt(dx * dx + dz * dz);
+                }
+
+                function pointToTriangleDistXZRobust(px, pz, v0, v1, v2) {
+                    const e1x = v1.x - v0.x, e1z = v1.z - v0.z;
+                    const e2x = v2.x - v0.x, e2z = v2.z - v0.z;
+                    const cross = e1x * e2z - e1z * e2x;
+                    if (Math.abs(cross) < 1e-12) {
+                        return Math.min(
+                            pointToSegmentDistXZ(px, pz, v0.x, v0.z, v1.x, v1.z),
+                            pointToSegmentDistXZ(px, pz, v1.x, v1.z, v2.x, v2.z),
+                            pointToSegmentDistXZ(px, pz, v2.x, v2.z, v0.x, v0.z)
+                        );
+                    }
+                    return pointToTriangleDistXZ(px, pz, v0, v1, v2);
+                }
+                
+                /**
+                 * 判定角色胶囊体在目标位置是否受阻。
+                 * 场景部分改由体素八叉树判定（它已经是“可行走空间”，网格外即实心），
+                 * 摆放道具 / 木箱 / 跑步机仍沿用原有的三角形判定以保留玩法。
+                 */
+                function checkCollisionXZ(posX, posY, posZ, ignoreOwners) {
+                    // 1) 场景碰撞：体素胶囊体查询
+                    if (voxelCollision &&
+                        voxelCollision.isCapsuleBlocked(posX, posY, posZ, characterRadius, characterHeight)) {
+                        return true;
+                    }
+
+                    // 2) 动态道具碰撞：保留原有三角形逻辑
+                    const wallThreshold = 0.7;  // 法线Y分量小于此值视为墙壁
+                    const ignoreSet = ignoreOwners instanceof Set
+                        ? ignoreOwners
+                        : (ignoreOwners ? new Set([ignoreOwners]) : null);
+
+                    for (const tri of propCollisionTriangles) {
+                        if (ignoreSet && tri.owner && ignoreSet.has(tri.owner)) continue;
+                        const { v0, v1, v2 } = tri;
+
+                        const e1x = v1.x - v0.x, e1y = v1.y - v0.y, e1z = v1.z - v0.z;
+                        const e2x = v2.x - v0.x, e2y = v2.y - v0.y, e2z = v2.z - v0.z;
+                        const nx = e1y * e2z - e1z * e2y;
+                        const ny = e1z * e2x - e1x * e2z;
+                        const nz = e1x * e2y - e1y * e2x;
+                        const nLen = Math.sqrt(nx * nx + ny * ny + nz * nz);
+                        if (nLen < 0.0001) continue;
+
+                        if (Math.abs(ny / nLen) > wallThreshold) continue;
+
+                        const triMinY = Math.min(v0.y, v1.y, v2.y);
+                        const triMaxY = Math.max(v0.y, v1.y, v2.y);
+                        const charBottom = posY + 0.1;
+                        const charTop = posY + characterHeight - 0.1;
+
+                        if (charBottom > triMaxY || charTop < triMinY) continue;
+
+                        if (pointToTriangleDistXZRobust(posX, posZ, v0, v1, v2) < characterRadius) {
+                            return true;
+                        }
+                    }
+
+                    return false;
+                }
+
+                /**
+                 * 胶囊体水平扫掩式推进（连续碰撞检测，CCD）。
+                 *
+                 * 旧方案只判定“目标点”是否撞墙，一旦帧率下降或速度偏大就直接跳过薄墙；
+                 * 现在将位移切成不超过半个体素的小步逐步推进，物理上不可能跳过任何一层墙；
+                 * 遇阻时依次尝试单轴滑动，保留贴墙滑行的手感。
+                 *
+                 * @returns {{x:number, z:number, hit:boolean}} 本帧最终可到达的水平位置
+                 */
+                function sweepCharacterXZ(fromX, posY, fromZ, toX, toZ, ignoreOwners) {
+                    const dx = toX - fromX;
+                    const dz = toZ - fromZ;
+                    const dist = Math.hypot(dx, dz);
+                    if (dist < 1e-9) return { x: fromX, z: fromZ, hit: false };
+
+                    // 每一步不超过半个体素（无体素数据时退化为 4cm）。
+                    const res = voxelCollision ? voxelCollision.res : 0.08;
+                    const minStep = res * 0.5;
+
+                    let hit = false;
+
+                    /**
+                     * 在一条线段上尽可能推进，返回能到达的最远自由位置。
+                     * 全程以不超过半个体素的小步推进，首次受阻后再二分细化接触点。
+                     */
+                    function seg(ax, az, bx, bz) {
+                        const len = Math.hypot(bx - ax, bz - az);
+                        if (len < 1e-9) return { x: ax, z: az, done: true };
+
+                        const steps = Math.max(1, Math.ceil(len / minStep));
+                        let freeX = ax, freeZ = az;
+                        for (let i = 1; i <= steps; i++) {
+                            const blockedX = ax + (bx - ax) * (i / steps);
+                            const blockedZ = az + (bz - az) * (i / steps);
+                            if (!checkCollisionXZ(blockedX, posY, blockedZ, ignoreOwners)) {
+                                freeX = blockedX;
+                                freeZ = blockedZ;
+                                continue;
+                            }
+                            let loX = freeX, loZ = freeZ;
+                            let hiX = blockedX, hiZ = blockedZ;
+                            for (let k = 0; k < 10; k++) {
+                                const midX = (loX + hiX) * 0.5;
+                                const midZ = (loZ + hiZ) * 0.5;
+                                if (checkCollisionXZ(midX, posY, midZ, ignoreOwners)) {
+                                    hiX = midX;
+                                    hiZ = midZ;
+                                } else {
+                                    loX = midX;
+                                    loZ = midZ;
+                                }
+                            }
+                            return { x: loX, z: loZ, done: false };
+                        }
+                        return { x: bx, z: bz, done: true };
+                    }
+
+                    let curX = fromX;
+                    let curZ = fromZ;
+
+                    const adv = seg(curX, curZ, toX, toZ);
+                    curX = adv.x;
+                    curZ = adv.z;
+
+                    if (!adv.done) {
+                        hit = true;
+                        const sX = seg(curX, curZ, toX, curZ);
+                        const sZ = seg(curX, curZ, curX, toZ);
+                        const gainX = Math.abs(sX.x - curX);
+                        const gainZ = Math.abs(sZ.z - curZ);
+
+                        if (gainX >= gainZ && gainX > 1e-9) {
+                            curX = sX.x;
+                        } else if (gainZ > 1e-9) {
+                            curZ = sZ.z;
+                        }
+                    }
+
+                    return { x: curX, z: curZ, hit };
+                }
+
+                /**
+                 * 着地状态的贴地水平扫掠：每个 CCD 子步都重新求地面高度，
+                 * 并在新脚底位置复核完整胶囊净空。跳跃状态仍使用上面的固定 Y
+                 * 扫掠，避免在空中错误吸附到场景表面。
+                 */
+                function sweepCharacterGrounded(fromX, fromY, fromZ, toX, toZ, ignoreOwners) {
+                    if (!collisionEnabled) {
+                        return { x: fromX, y: fromY, z: fromZ, hit: false, grounded: true };
+                    }
+                    if (!voxelCollision) {
+                        const fallback = sweepCharacterXZ(
+                            fromX, fromY, fromZ, toX, toZ, ignoreOwners
+                        );
+                        return {
+                            x: fallback.x,
+                            y: fromY,
+                            z: fallback.z,
+                            hit: fallback.hit,
+                            grounded: true,
+                            reason: fallback.hit ? 'blocked' : ''
+                        };
+                    }
+                    const result = voxelCollision.sweepCapsuleGrounded(
+                        fromX, fromY, fromZ, toX, toZ,
+                        characterRadius, characterHeight,
+                        {
+                            maxStepUp: GROUND_MAX_STEP_UP,
+                            maxStepDown: GROUND_MAX_STEP_DOWN,
+                            supportDrop: GROUND_SUPPORT_DROP,
+                            skin: GROUND_SKIN,
+                            localReliefRadius: GROUND_LOCAL_RELIEF_RADIUS,
+                            maxLocalRelief: GROUND_MAX_LOCAL_RELIEF,
+                            // 中心与脚底周边共同确认支撑，避免在体素边沿来回选面。
+                            supportRadius: GROUND_SUPPORT_RADIUS,
+                            groundHeightAt: (x, z, top, drop) => {
+                                const q = getGroundQuery(x, z, top, ignoreOwners, drop);
+                                return q.y > groundY + GROUND_SKIN ? q.y : null;
+                            },
+                            isBlocked: (x, y, z) => checkCollisionXZ(x, y, z, ignoreOwners)
+                        }
+                    );
+                    return result;
+                }
+
+                function getContinuousGroundY(posX, posY, posZ, ignoreOwners) {
+                    if (!voxelCollision) return null;
+                    return voxelCollision.groundedFootHeightAt(
+                        posX, posZ, posY, characterRadius, characterHeight,
+                        {
+                            maxStepUp: GROUND_MAX_STEP_UP,
+                            maxStepDown: GROUND_MAX_STEP_DOWN,
+                            supportDrop: GROUND_SUPPORT_DROP,
+                            skin: GROUND_SKIN,
+                            supportRadius: GROUND_SUPPORT_RADIUS,
+                            localReliefRadius: GROUND_LOCAL_RELIEF_RADIUS,
+                            maxLocalRelief: GROUND_MAX_LOCAL_RELIEF,
+                            groundHeightAt: (x, z, top, drop) => {
+                                const q = getGroundQuery(x, z, top, ignoreOwners, drop);
+                                return q.y > groundY + GROUND_SKIN ? q.y : null;
+                            },
+                            isBlocked: (x, y, z) => checkCollisionXZ(x, y, z, ignoreOwners)
+                        }
+                    );
+                }
+
+                /**
+                 * 胶囊体垂直连续碰撞检测。体素运行时会以不超过半个体素的步长推进，
+                 * 因而低帧率下也不会从薄顶棚或薄地板的一侧跳到另一侧。
+                 */
+                function sweepCharacterY(posX, fromY, posZ, toY) {
+                    if (!collisionEnabled || !voxelCollision) {
+                        return { y: toY, hit: false, startedBlocked: false };
+                    }
+                    return voxelCollision.sweepCapsuleY(
+                        posX, fromY, posZ, toY, characterRadius, characterHeight
+                    );
+                }
+
+                /** 着地吸附前复核完整胶囊净空；动态道具顶面仍由地面查询负责。 */
+                function canSnapToGround(posX, posY, posZ, ignoreOwners) {
+                    return !collisionEnabled || !checkCollisionXZ(posX, posY, posZ, ignoreOwners);
+                }
+
+                /** 仅在 skin 范围内原地向上恢复，不改变 XZ，也不会跨过墙体。 */
+                function recoverCharacterFootWithinSkin(posX, posY, posZ, ignoreOwners) {
+                    if (!checkCollisionXZ(posX, posY, posZ, ignoreOwners)) return posY;
+                    const highY = posY + GROUND_SKIN;
+                    if (checkCollisionXZ(posX, highY, posZ, ignoreOwners)) return null;
+                    let low = posY;
+                    let high = highY;
+                    for (let i = 0; i < 12; i++) {
+                        const mid = (low + high) * 0.5;
+                        if (checkCollisionXZ(posX, mid, posZ, ignoreOwners)) low = mid;
+                        else high = mid;
+                    }
+                    return high;
+                }
+
+                /** 只允许落到脚底在本帧由上向下实际跨越的表面。 */
+                function crossedGroundThisFrame(oldY, reachedY, surfaceY, epsilon) {
+                    return reachedY <= oldY &&
+                        surfaceY > groundY + epsilon &&
+                        surfaceY <= oldY + epsilon &&
+                        surfaceY >= reachedY - epsilon;
+                }
+                 
+                // 检测脚下地面高度（用于重力）
+                // 找角色脚下最近的可站立表面（法线朝上）
+                // searchMaxY: 搜索上限，只查找不高于此值的面
+                // stompOwner: 若着地面来自摆放道具网格，则为该道具根实体（用于马里奥式踩踏）
+                function getGroundQuery(posX, posZ, searchMaxY, ignoreOwners, maxDrop = 60) {
+                    let groundHeight = -Infinity;
+                    let stompOwner = null;
+                    const groundSearchDrop = Number.isFinite(maxDrop)
+                        ? Math.max(0, maxDrop)
+                        : 60;
+                    const searchMinY = searchMaxY - groundSearchDrop;
+                    const ignoreSet = ignoreOwners instanceof Set
+                        ? ignoreOwners
+                        : (ignoreOwners ? new Set([ignoreOwners]) : null);
+                    
+                    function pointInTriangleXZ(px, pz, v0, v1, v2) {
+                        const d1 = (px - v1.x) * (v0.z - v1.z) - (v0.x - v1.x) * (pz - v1.z);
+                        const d2 = (px - v2.x) * (v1.z - v2.z) - (v1.x - v2.x) * (pz - v2.z);
+                        const d3 = (px - v0.x) * (v2.z - v0.z) - (v2.x - v0.x) * (pz - v0.z);
+                        const hasNeg = (d1 < 0) || (d2 < 0) || (d3 < 0);
+                        const hasPos = (d1 > 0) || (d2 > 0) || (d3 > 0);
+                        return !(hasNeg && hasPos);
+                    }
+                    
+                    function getTriangleYAt(px, pz, v0, v1, v2) {
+                        const denom = (v1.z - v2.z) * (v0.x - v2.x) + (v2.x - v1.x) * (v0.z - v2.z);
+                        if (Math.abs(denom) < 0.0001) {
+                            return (v0.y + v1.y + v2.y) / 3;
+                        }
+                        const w1 = ((v1.z - v2.z) * (px - v2.x) + (v2.x - v1.x) * (pz - v2.z)) / denom;
+                        const w2 = ((v2.z - v0.z) * (px - v2.x) + (v0.x - v2.x) * (pz - v2.z)) / denom;
+                        const w3 = 1 - w1 - w2;
+                        return w1 * v0.y + w2 * v1.y + w3 * v2.y;
+                    }
+                    
+                    function getTriangleNormalY(v0, v1, v2) {
+                        const e1x = v1.x - v0.x, e1y = v1.y - v0.y, e1z = v1.z - v0.z;
+                        const e2x = v2.x - v0.x, e2y = v2.y - v0.y, e2z = v2.z - v0.z;
+                        const nx = e1y * e2z - e1z * e2y;
+                        const ny = e1z * e2x - e1x * e2z;
+                        const nz = e1x * e2y - e1y * e2x;
+                        const len = Math.sqrt(nx * nx + ny * ny + nz * nz);
+                        if (len < 0.0001) return 0;
+                        return ny / len;
+                    }
+                    
+                    // 1) 场景地面：体素垂直向下射线（从 searchMaxY 开始，二分细化到亚厘米）
+                    if (voxelCollision) {
+                        const vy = voxelCollision.groundHeightAt(
+                            posX, posZ, searchMaxY, groundSearchDrop
+                        );
+                        if (vy !== null && vy > groundHeight) {
+                            groundHeight = vy;
+                            stompOwner = null;   // 场景地面不可踩踏消灭
+                        }
+                    }
+
+                    // 2) 动态道具表面：保留原有三角形逻辑（支持马里奥式踩踏）
+                    for (const tri of propCollisionTriangles) {
+                        if (ignoreSet && tri.owner && ignoreSet.has(tri.owner)) continue;
+                        const { v0, v1, v2 } = tri;
+
+                        const normalY = getTriangleNormalY(v0, v1, v2);
+                        if (normalY < 0.3) continue;
+
+                        const minX = Math.min(v0.x, v1.x, v2.x) - characterRadius;
+                        const maxX = Math.max(v0.x, v1.x, v2.x) + characterRadius;
+                        const minZ = Math.min(v0.z, v1.z, v2.z) - characterRadius;
+                        const maxZ = Math.max(v0.z, v1.z, v2.z) + characterRadius;
+
+                        if (posX < minX || posX > maxX || posZ < minZ || posZ > maxZ) continue;
+
+                        if (pointInTriangleXZ(posX, posZ, v0, v1, v2)) {
+                            const triY = getTriangleYAt(posX, posZ, v0, v1, v2);
+                            if (triY >= searchMinY && triY <= searchMaxY && triY > groundHeight) {
+                                groundHeight = triY;
+                                stompOwner = tri.stompOwner || null;
+                            }
+                        }
+                    }
+
+                    const y = groundHeight === -Infinity ? groundY : groundHeight;
+                    return { y, stompOwner };
+                }
+
+                function getGroundHeight(posX, posZ, searchMaxY, ignoreOwners) {
+                    return getGroundQuery(posX, posZ, searchMaxY, ignoreOwners).y;
+                }
+
+                /**
+                 * Find the closest usable floor around the requested spawn point.
+                 * Voxel generation can move the exact origin by a few centimeters,
+                 * and a fixed (0, 0, 0) fallback is unsafe for scenes whose floor is
+                 * offset or split into several rooms.
+                 */
+                function findNearestVoxelSpawn(
+                    preferredX = 0,
+                    preferredY = 0,
+                    preferredZ = 0,
+                    collision = voxelCollision,
+                    capsuleRadius = characterRadius,
+                    capsuleHeight = characterHeight
+                ) {
+                    if (!collision) return null;
+
+                    const bounds = collision.getWorldBounds();
+                    const heightSpan = Math.max(1, bounds.max[1] - bounds.min[1]);
+                    const sampleStep = Math.max(0.1, collision.res * 2);
+                    // Search locally around the authored foot height. Starting at
+                    // scene maxY can hit the ceiling top before the intended floor.
+                    const top = pc.math.clamp(
+                        preferredY + GROUND_MAX_STEP_UP + 0.10,
+                        bounds.min[1] + collision.res,
+                        bounds.max[1] - collision.res
+                    );
+                    const maxDrop = Math.max(0.8, GROUND_MAX_STEP_DOWN + 0.45);
+                    const minX = bounds.min[0] + capsuleRadius;
+                    const maxX = bounds.max[0] - capsuleRadius;
+                    const minZ = bounds.min[2] + capsuleRadius;
+                    const maxZ = bounds.max[2] - capsuleRadius;
+
+                    const test = (x, z) => {
+                        if (x < minX || x > maxX || z < minZ || z > maxZ) return null;
+                        const ground = collision.groundHeightAt(x, z, top, maxDrop);
+                        if (ground === null) return null;
+                        const fixed = collision.resolvePenetration(
+                            x, ground + 0.02, z, capsuleRadius, capsuleHeight
+                        );
+                        if (!fixed) return null;
+                        const groundAfterFix = collision.groundHeightAt(
+                            fixed.x, fixed.z, fixed.y + 0.5, Math.max(2, heightSpan)
+                        );
+                        if (groundAfterFix === null) return null;
+                        const y = collision.groundedFootHeightAt(
+                            fixed.x, fixed.z, groundAfterFix,
+                            capsuleRadius, capsuleHeight,
+                            {
+                                maxStepUp: 0,
+                                maxStepDown: 0,
+                                supportDrop: GROUND_SUPPORT_DROP,
+                                supportRadius: 0,
+                                skin: GROUND_SKIN
+                            }
+                        );
+                        if (!Number.isFinite(y)) return null;
+                        if (collision.isCapsuleBlocked(
+                            fixed.x, y, fixed.z, capsuleRadius, capsuleHeight
+                        )) return null;
+                        return { x: fixed.x, y, z: fixed.z };
+                    };
+
+                    let nearest = test(preferredX, preferredZ);
+                    let nearestDistance = nearest
+                        ? Math.hypot(nearest.x - preferredX, nearest.z - preferredZ)
+                        : Infinity;
+                    if (nearestDistance < 1e-9) return nearest;
+
+                    // Expand in rings and compare the final position after penetration
+                    // recovery. resolvePenetration can move a candidate by at most
+                    // 40 voxels, so once the next ring cannot beat the current result
+                    // the result is globally nearest among all sampled candidates.
+                    const maxSearchRadius = Math.max(
+                        Math.hypot(preferredX - minX, preferredZ - minZ),
+                        Math.hypot(preferredX - minX, preferredZ - maxZ),
+                        Math.hypot(preferredX - maxX, preferredZ - minZ),
+                        Math.hypot(preferredX - maxX, preferredZ - maxZ)
+                    );
+                    const maxRing = Math.ceil(maxSearchRadius / sampleStep) + 1;
+                    const maxRecoveryDistance = collision.res * 40;
+                    for (let ring = 1; ring <= maxRing; ring++) {
+                        const radius = ring * sampleStep;
+                        const samples = Math.max(8, Math.ceil((Math.PI * 2 * radius) / sampleStep));
+                        for (let i = 0; i < samples; i++) {
+                            const a = (i / samples) * Math.PI * 2;
+                            const candidate = test(
+                                preferredX + Math.cos(a) * radius,
+                                preferredZ + Math.sin(a) * radius
+                            );
+                            if (!candidate) continue;
+                            const distance = Math.hypot(
+                                candidate.x - preferredX,
+                                candidate.z - preferredZ
+                            );
+                            if (distance < nearestDistance) {
+                                nearest = candidate;
+                                nearestDistance = distance;
+                            }
+                        }
+                        const nextRingLowerBound = Math.max(
+                            0,
+                            (ring + 1) * sampleStep - maxRecoveryDistance
+                        );
+                        if (nearest && nextRingLowerBound >= nearestDistance - 1e-9) {
+                            return nearest;
+                        }
+                    }
+                    return nearest;
+                }
+
+                // 第一人称玩家仅保留不可见胶囊根节点，碰撞和移动仍复用原系统。
+                const characterEntity = new pc.Entity('Character', app);
+                // 出生点：从场景原点附近自动寻找最近合法地面。
+                let spawnX = 0, spawnY = 0, spawnZ = 0;
+                if (voxelCollision) {
+                    const preferredSpawn = Array.isArray(SCENE_CONFIG.spawn) ? SCENE_CONFIG.spawn : [0, 0, 0];
+                    const found = findNearestVoxelSpawn(
+                        preferredSpawn[0], preferredSpawn[1], preferredSpawn[2]
+                    );
+                    if (found) {
+                        spawnX = found.x;
+                        spawnY = found.y;
+                        spawnZ = found.z;
+                    } else {
+                        console.warn('⚠️ 出生点附近找不到自由空间，请检查场景出生点与体素碰撞数据');
+                    }
+                    console.log(`🎯 出生点自动落地: (${spawnX.toFixed(2)}, ${spawnY.toFixed(2)}, ${spawnZ.toFixed(2)})`);
+                }
+
+                characterEntity.setLocalPosition(spawnX, spawnY, spawnZ);
+                const initialCharacterYaw = Number.isFinite(SCENE_CONFIG.spawnYaw)
+                    ? SCENE_CONFIG.spawnYaw
+                    : 0;
+                characterEntity.setLocalEulerAngles(0, initialCharacterYaw, 0);
+                app.root.addChild(characterEntity);
+                const lastSafePose = { x: spawnX, y: spawnY, z: spawnZ };
+
+                /**
+                 * Recover exceptional blocked states without a horizontal search.
+                 * Normal movement never uses this path: first try the same <= skin
+                 * vertical correction, then fall back to the last verified stance.
+                 */
+                function recoverBlockedCharacterPose() {
+                    if (!collisionEnabled) return '';
+                    const pos = characterEntity.getPosition();
+                    if (!checkCollisionXZ(pos.x, pos.y, pos.z)) return '';
+
+                    const recoveredY = recoverCharacterFootWithinSkin(pos.x, pos.y, pos.z);
+                    if (Number.isFinite(recoveredY)) {
+                        characterEntity.setPosition(pos.x, recoveredY, pos.z);
+                        return 'skin';
+                    }
+
+                    if (lastSafePose && !checkCollisionXZ(
+                        lastSafePose.x, lastSafePose.y, lastSafePose.z
+                    )) {
+                        characterEntity.setPosition(
+                            lastSafePose.x, lastSafePose.y, lastSafePose.z
+                        );
+                        velocityY = 0;
+                        isGrounded = true;
+                        isJumping = false;
+                        return 'last-safe';
+                    }
+                    return 'blocked';
+                }
+
+                // The narrative controller owns every cat transform to avoid competing update loops.
+                const blackCatEntity = new pc.Entity('BlackCatNpc', app);
+                const blackCatModel = assets.blackCat.resource?.instantiateRenderEntity({ castShadows: true });
+                if (!blackCatModel) throw new Error('黑猫模型加载失败');
+                blackCatModel.setLocalScale(0.032256, 0.032256, 0.032256);
+                blackCatModel.setLocalPosition(0, 0.093216, 0);
+                blackCatEntity.addChild(blackCatModel);
+                blackCatEntity.setLocalPosition(-0.75, 0.02, -0.10);
+                blackCatEntity.setLocalEulerAngles(0, 0, 0);
+                app.root.addChild(blackCatEntity);
+
+                const blackCatAnimation = assets.blackCat.resource.animations?.find((animation) =>
+                    animation.name === 'Animation'
+                ) || assets.blackCat.resource.animations?.[0];
+                if (blackCatAnimation?.resource) {
+                    blackCatModel.addComponent('anim', { activate: true, speed: 1.0 });
+                    blackCatModel.anim.loadStateGraph({
+                        layers: [{
+                            name: 'base',
+                            states: [
+                                { name: 'START' },
+                                { name: 'Walk', speed: 1.0, loop: true }
+                            ],
+                            transitions: [{ from: 'START', to: 'Walk', time: 0, priority: 0 }]
+                        }],
+                        parameters: {}
+                    });
+                    blackCatModel.anim.baseLayer.assignAnimation('Walk', blackCatAnimation.resource);
+                    blackCatModel.anim.baseLayer.play('Walk');
+                }
+                let dreamController = null;
+
+                const placedDecorEntities = [];
+                const pushablePropEntities = [];
+                const PUSHABLE_CRATE_CONFIG = {
+                    hx: 0.38,
+                    hy: 0.38,
+                    hz: 0.38,
+                    spawnDistance: 1.45,
+                    pushClearance: 0.06
+                };
+
+                function getPushablePropAabb(record, cx, cy, cz) {
+                    const p = record.entity.getPosition();
+                    const x = cx ?? p.x;
+                    const y = cy ?? p.y;
+                    const z = cz ?? p.z;
+                    return {
+                        minX: x - record.hx,
+                        maxX: x + record.hx,
+                        minY: y - record.hy,
+                        maxY: y + record.hy,
+                        minZ: z - record.hz,
+                        maxZ: z + record.hz
+                    };
+                }
+
+                function aabbOverlaps(a, b, padXZ = 0, padY = 0) {
+                    return !(
+                        a.maxX <= b.minX - padXZ ||
+                        a.minX >= b.maxX + padXZ ||
+                        a.maxZ <= b.minZ - padXZ ||
+                        a.minZ >= b.maxZ + padXZ ||
+                        a.maxY <= b.minY - padY ||
+                        a.minY >= b.maxY + padY
+                    );
+                }
+
+                function syncPushablePropCollision(record) {
+                    if (!record?.entity) return;
+                    removePropCollisionForOwner(record.entity);
+                    const p = record.entity.getPosition();
+                    appendAxisAlignedBoxCollisionTris(
+                        p.x, p.y, p.z,
+                        record.hx, record.hy, record.hz,
+                        record.entity,
+                        null
+                    );
+                }
+
+                function findBlockingAabbForPushable(record, testAabb) {
+                    if (sceneCameraBounds.valid) {
+                        const pad = 0.12;
+                        if (
+                            testAabb.minX < sceneCameraBounds.minX + pad ||
+                            testAabb.maxX > sceneCameraBounds.maxX - pad ||
+                            testAabb.minZ < sceneCameraBounds.minZ + pad ||
+                            testAabb.maxZ > sceneCameraBounds.maxZ - pad
+                        ) {
+                            return true;
+                        }
+                    }
+                    for (const other of pushablePropEntities) {
+                        if (!other?.entity || other.entity === record.entity) continue;
+                        if (aabbOverlaps(testAabb, getPushablePropAabb(other), 0.04, 0.04)) return true;
+                    }
+                    for (const ent of placedDecorEntities) {
+                        if (!ent || ent === record.entity) continue;
+                        const wb = mergeWorldAabbPlacedDecor(ent);
+                        if (!wb) continue;
+                        const m = wb.merged;
+                        const aabb = {
+                            minX: m.center.x - m.halfExtents.x,
+                            maxX: m.center.x + m.halfExtents.x,
+                            minY: m.center.y - m.halfExtents.y,
+                            maxY: m.center.y + m.halfExtents.y,
+                            minZ: m.center.z - m.halfExtents.z,
+                            maxZ: m.center.z + m.halfExtents.z
+                        };
+                        if (aabbOverlaps(testAabb, aabb, 0.02, 0.04)) return true;
+                    }
+                    // 场景碰撞：在目标 AABB 内采样体素，防止把箱子推进墙里
+                    if (voxelCollision) {
+                        const step = voxelCollision.res;
+                        const y0 = testAabb.minY + 0.05;
+                        const y1 = testAabb.maxY - 0.05;
+                        for (let x = testAabb.minX; x <= testAabb.maxX + 1e-6; x += step) {
+                            for (let z = testAabb.minZ; z <= testAabb.maxZ + 1e-6; z += step) {
+                                for (let y = y0; y <= y1 + 1e-6; y += step) {
+                                    if (voxelCollision.isSolidAtWorld(x, y, z)) return true;
+                                }
+                            }
+                        }
+                    }
+                    return false;
+                }
+
+                function tryMovePushableProp(record, deltaX, deltaZ) {
+                    if (!record?.entity) return false;
+                    const cur = record.entity.getPosition();
+                    const ignoreSelf = new Set([record.entity]);
+                    const tryCandidate = (tx, tz) => {
+                        const ty = getGroundHeight(tx, tz, cur.y + record.hy + 1.2, ignoreSelf) + record.hy;
+                        const testAabb = getPushablePropAabb(record, tx, ty, tz);
+                        if (findBlockingAabbForPushable(record, testAabb)) return null;
+                        return { x: tx, y: ty, z: tz };
+                    };
+                    const cand =
+                        tryCandidate(cur.x + deltaX, cur.z + deltaZ) ||
+                        tryCandidate(cur.x + deltaX, cur.z) ||
+                        tryCandidate(cur.x, cur.z + deltaZ);
+                    if (!cand) return false;
+                    record.entity.setPosition(cand.x, cand.y, cand.z);
+                    syncPushablePropCollision(record);
+                    return true;
+                }
+
+                function tryPushPropsForCharacterMove(curX, curY, curZ, deltaX, deltaZ) {
+                    const movedOwners = new Set();
+                    if ((Math.abs(deltaX) + Math.abs(deltaZ)) < 1e-6) return movedOwners;
+                    const nextCharAabb = {
+                        minX: curX + deltaX - characterRadius,
+                        maxX: curX + deltaX + characterRadius,
+                        minY: curY,
+                        maxY: curY + characterHeight,
+                        minZ: curZ + deltaZ - characterRadius,
+                        maxZ: curZ + deltaZ + characterRadius
+                    };
+                    for (const record of pushablePropEntities) {
+                        if (!record?.entity) continue;
+                        const expanded = getPushablePropAabb(record);
+                        expanded.minX -= PUSHABLE_CRATE_CONFIG.pushClearance;
+                        expanded.maxX += PUSHABLE_CRATE_CONFIG.pushClearance;
+                        expanded.minZ -= PUSHABLE_CRATE_CONFIG.pushClearance;
+                        expanded.maxZ += PUSHABLE_CRATE_CONFIG.pushClearance;
+                        if (!aabbOverlaps(nextCharAabb, expanded, 0, 0.04)) continue;
+                        if (tryMovePushableProp(record, deltaX, deltaZ)) {
+                            movedOwners.add(record.entity);
+                        }
+                    }
+                    return movedOwners;
+                }
+
+                function placePushableCrateNearCharacter() {
+                    const idx = pushablePropEntities.length + 1;
+                    const ent = new pc.Entity(`木箱_${idx}`, app);
+                    ent.addComponent('render', { type: 'box', castShadows: true });
+                    const mat = new pc.StandardMaterial();
+                    mat.diffuse = new pc.Color(0.56, 0.34, 0.18);
+                    mat.emissive = new pc.Color(0.08, 0.04, 0.02);
+                    mat.shininess = 18;
+                    mat.update();
+                    ent.render.meshInstances[0].material = mat;
+                    ent.setLocalScale(
+                        PUSHABLE_CRATE_CONFIG.hx * 2,
+                        PUSHABLE_CRATE_CONFIG.hy * 2,
+                        PUSHABLE_CRATE_CONFIG.hz * 2
+                    );
+                    const pos = characterEntity.getPosition();
+                    const yawRad = characterYaw * Math.PI / 180;
+                    const fwdX = Math.sin(yawRad);
+                    const fwdZ = Math.cos(yawRad);
+                    const x = pos.x + fwdX * PUSHABLE_CRATE_CONFIG.spawnDistance;
+                    const z = pos.z + fwdZ * PUSHABLE_CRATE_CONFIG.spawnDistance;
+                    const y = getGroundHeight(x, z, pos.y + 2) + PUSHABLE_CRATE_CONFIG.hy;
+                    ent.setPosition(x, y, z);
+                    app.root.addChild(ent);
+                    const record = {
+                        entity: ent,
+                        hx: PUSHABLE_CRATE_CONFIG.hx,
+                        hy: PUSHABLE_CRATE_CONFIG.hy,
+                        hz: PUSHABLE_CRATE_CONFIG.hz
+                    };
+                    pushablePropEntities.push(record);
+                    syncPushablePropCollision(record);
+                    console.log(`📦 已放置可推动木箱 (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`);
+                }
+
+                function placeTreadmillNearCharacter() {
+                    const res = assets.treadmillGlb?.resource;
+                    if (!res) {
+                        console.warn('⚠️ 跑步机 GLB 未加载');
+                        return;
+                    }
+                    const ent = res.instantiateRenderEntity({ castShadows: true });
+                    const tmIdx = placedDecorEntities.filter((e) => e.name && String(e.name).startsWith('跑步机')).length + 1;
+                    ent.name = `跑步机_${tmIdx}`;
+                    const pos = characterEntity.getPosition();
+                    const yawRad = characterYaw * Math.PI / 180;
+                    const fwdX = Math.sin(yawRad);
+                    const fwdZ = Math.cos(yawRad);
+                    const d = 1.35;
+                    ent.setPosition(pos.x + fwdX * d, pos.y, pos.z + fwdZ * d);
+                    ent.setLocalEulerAngles(0, characterYaw, 0);
+                    ent.setLocalScale(2.5, 2.5, 2.5);
+                    app.root.addChild(ent);
+                    placedDecorEntities.push(ent);
+                    const p = ent.getPosition();
+                    console.log(`🏃 已放置跑步机 (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}) 朝向 ${characterYaw.toFixed(0)}°`);
+                    schedulePlacedDecorCollisionBuild(ent, ent.name, ent);
+                }
+
+                function destroyStompableDecor(rootEnt) {
+                    if (!rootEnt) return;
+                    const nm = rootEnt.name;
+                    propCollisionTriangles = propCollisionTriangles.filter((t) => t.stompOwner !== rootEnt);
+                    const si = placedDecorEntities.indexOf(rootEnt);
+                    if (si >= 0) placedDecorEntities.splice(si, 1);
+                    rootEnt.destroy();
+                    recomputeSceneCameraBounds();
+                    console.log('👟 踩踏消灭:', nm);
+                }
+
+                /** 与 collectRenderModelComponentsUnder 一致数据源，合并世界 AABB */
+                function mergeWorldAabbPlacedDecor(rootEntity) {
+                    const merged = new pc.BoundingBox();
+                    let ok = false;
+                    const comps = collectRenderModelComponentsUnder(rootEntity);
+                    for (let ci = 0; ci < comps.length; ci++) {
+                        const comp = comps[ci];
+                        if (!comp || !comp.meshInstances) continue;
+                        for (let mi = 0; mi < comp.meshInstances.length; mi++) {
+                            const box = comp.meshInstances[mi].aabb;
+                            if (!box) continue;
+                            if (!ok) {
+                                merged.copy(box);
+                                ok = true;
+                            } else {
+                                merged.add(box);
+                            }
+                        }
+                    }
+                    if (!ok) return null;
+                    const minY = merged.center.y - merged.halfExtents.y;
+                    const maxY = merged.center.y + merged.halfExtents.y;
+                    return { minY, maxY, merged };
+                }
+
+                function removePropCollisionForOwner(owner) {
+                    if (!owner) return;
+                    propCollisionTriangles = propCollisionTriangles.filter((t) => t.owner !== owner && t.stompOwner !== owner);
+                }
+
+                /** 有 mesh 时仅用网格三角；无 mesh 时用 AABB 盒三角（竖面靠 pointToTriangleDistXZRobust） */
+                function syncPlacedDecorMeshCollision(rootForMeshSearch, label, stompOwnerEntity) {
+                    if (stompOwnerEntity && stompOwnerEntity.syncHierarchy) {
+                        stompOwnerEntity.syncHierarchy();
+                    }
+                    removePropCollisionForOwner(rootForMeshSearch);
+                    if (stompOwnerEntity !== rootForMeshSearch) {
+                        removePropCollisionForOwner(stompOwnerEntity);
+                    }
+                    const meshN = appendWorldMeshTrianglesFromRenderRoot(
+                        rootForMeshSearch,
+                        label,
+                        rootForMeshSearch,
+                        stompOwnerEntity
+                    );
+                    let boxN = 0;
+                    if (meshN === 0) {
+                        const wb = mergeWorldAabbPlacedDecor(stompOwnerEntity);
+                        if (wb) {
+                            const m = wb.merged;
+                            const hx = Math.max(0.22, m.halfExtents.x);
+                            const hy = Math.max(0.28, m.halfExtents.y);
+                            const hz = Math.max(0.22, m.halfExtents.z);
+                            boxN = appendAxisAlignedBoxCollisionTris(
+                                m.center.x,
+                                m.center.y,
+                                m.center.z,
+                                hx,
+                                hy,
+                                hz,
+                                rootForMeshSearch,
+                                stompOwnerEntity
+                            );
+                            console.log(`🧱 ${label} 未抽到 mesh，已用引擎 AABB 包围盒补碰撞 (${boxN} 三角)`);
+                        } else {
+                            const p = stompOwnerEntity.getPosition();
+                            boxN = appendAxisAlignedBoxCollisionTris(
+                                p.x,
+                                p.y + 0.62,
+                                p.z,
+                                1.05,
+                                0.62,
+                                1.05,
+                                rootForMeshSearch,
+                                stompOwnerEntity
+                            );
+                            console.warn(`⚠️ ${label} 尚无 mesh/AABB，已用大型占位包围盒补碰撞`);
+                        }
+                    }
+                    const playerPos = characterEntity.getPosition();
+                    const withoutOwner = new Set([rootForMeshSearch, stompOwnerEntity]);
+                    const wasFreeWithoutOwner = !checkCollisionXZ(
+                        playerPos.x, playerPos.y, playerPos.z, withoutOwner
+                    );
+                    const blockedWithOwner = checkCollisionXZ(
+                        playerPos.x, playerPos.y, playerPos.z
+                    );
+                    if (wasFreeWithoutOwner && blockedWithOwner) {
+                        removePropCollisionForOwner(rootForMeshSearch);
+                        if (stompOwnerEntity !== rootForMeshSearch) {
+                            removePropCollisionForOwner(stompOwnerEntity);
+                        }
+                        const placedIndex = placedDecorEntities.indexOf(stompOwnerEntity);
+                        if (placedIndex >= 0) placedDecorEntities.splice(placedIndex, 1);
+                        if (stompOwnerEntity && !stompOwnerEntity._destroying) {
+                            stompOwnerEntity.destroy();
+                        }
+                        recomputeSceneCameraBounds();
+                        console.warn(`⚠️ ${label} 的碰撞体会覆盖玩家，已取消本次摆放`);
+                        return { meshN: 0, totalTris: 0, rejected: true };
+                    }
+
+                    recomputeSceneCameraBounds();
+                    return { meshN, totalTris: meshN + boxN, rejected: false };
+                }
+
+                /** 与跑步机一致：优先抽到真实 mesh；勿用「已有 AABB」提前结束，否则 mesh 顶点未就绪会永远只有盒体或空 */
+                function schedulePlacedDecorCollisionBuild(rootForMeshSearch, label, stompOwnerEntity) {
+                    const MAX_FRAMES = 20;
+                    let frame = 0;
+                    const step = () => {
+                        const r = syncPlacedDecorMeshCollision(rootForMeshSearch, frame ? `${label}_r${frame}` : label, stompOwnerEntity);
+                        frame++;
+                        const done = r.rejected || r.meshN > 0 || frame >= MAX_FRAMES;
+                        if (!done) {
+                            app.once('postrender', step);
+                        } else if (r.rejected) {
+                            return;
+                        } else if (r.meshN > 0 && frame > 1) {
+                            console.log(`🧱 ${label} 第 ${frame} 帧抽到 mesh：${r.meshN} 三角`);
+                        } else if (r.meshN === 0 && frame >= MAX_FRAMES) {
+                            console.warn(`⚠️ ${label} ${MAX_FRAMES} 帧后仍未抽到 mesh，当前为 AABB/占位盒三角`);
+                        }
+                    };
+                    app.once('postrender', step);
+                }
+
+                function validateStompFootOnDecor(posX, posZ, landingY, velocityY, jumpingFlag, rootEnt) {
+                    if (!rootEnt || placedDecorEntities.indexOf(rootEnt) < 0) return false;
+                    if (!jumpingFlag && velocityY > STOMP_MIN_DOWN_VEL) return false;
+                    const wb = mergeWorldAabbPlacedDecor(rootEnt);
+                    const pad = characterRadius + 0.22;
+                    if (wb) {
+                        const m = wb.merged;
+                        if (posX < m.center.x - m.halfExtents.x - pad || posX > m.center.x + m.halfExtents.x + pad) return false;
+                        if (posZ < m.center.z - m.halfExtents.z - pad || posZ > m.center.z + m.halfExtents.z + pad) return false;
+                        if (landingY < wb.minY - 0.4 || landingY > wb.maxY + 0.45) return false;
+                        const span = Math.max(0.12, wb.maxY - wb.minY);
+                        const topBandLow = wb.maxY - Math.min(1.35, span * 0.72);
+                        if (landingY < topBandLow) return false;
+                        return true;
+                    }
+                    const p = rootEnt.getPosition();
+                    const h = 1.1;
+                    if (posX < p.x - h || posX > p.x + h || posZ < p.z - h || posZ > p.z + h) return false;
+                    if (landingY < p.y - 0.25 || landingY > p.y + 2.2) return false;
+                    return landingY >= p.y + 0.15;
+                }
+
+                /** 优先用地面的 stompOwner；若无或校验失败则扫 placedDecorEntities（三角归属偶发丢失时仍能踩） */
+                function resolveStompDecorTarget(posX, posZ, landingY, velocityY, jumpingFlag, queryOwner) {
+                    if (validateStompFootOnDecor(posX, posZ, landingY, velocityY, jumpingFlag, queryOwner)) {
+                        return queryOwner;
+                    }
+                    for (let i = placedDecorEntities.length - 1; i >= 0; i--) {
+                        const e = placedDecorEntities[i];
+                        if (e === queryOwner) continue;
+                        if (validateStompFootOnDecor(posX, posZ, landingY, velocityY, jumpingFlag, e)) {
+                            return e;
+                        }
+                    }
+                    return null;
+                }
+
+                async function placeLoadedContainerDecor(url, title, scaleArr) {
+                    const uid = `place_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+                    const a = new pc.Asset(uid, 'container', { url });
+                    app.assets.add(a);
+                    await new Promise((res, rej) => {
+                        const loader = new pc.AssetListLoader([a], app.assets);
+                        loader.load((err) => (err ? rej(new Error(String(err))) : res()));
+                    });
+                    if (!a.resource) {
+                        console.warn('⚠️ 摆放模型 resource 为空:', url);
+                        return;
+                    }
+                    // 与玩家角色一致：外层只负责位置/朝向/缩放，勿覆盖 GLB 根节点自带旋转（否则会趴地）
+                    const idx = placedDecorEntities.length + 1;
+                    const wrapper = new pc.Entity(`摆放_${title}_${idx}`, app);
+                    const renderRoot = a.resource.instantiateRenderEntity({ castShadows: true });
+                    wrapper.addChild(renderRoot);
+                    const pos = characterEntity.getPosition();
+                    const yawRad = characterYaw * Math.PI / 180;
+                    const fwdX = Math.sin(yawRad);
+                    const fwdZ = Math.cos(yawRad);
+                    const d = 1.35;
+                    wrapper.setPosition(pos.x + fwdX * d, pos.y, pos.z + fwdZ * d);
+                    wrapper.setLocalEulerAngles(0, characterYaw, 0);
+                    const sx = scaleArr[0] ?? 1;
+                    const sy = scaleArr[1] ?? 1;
+                    const sz = scaleArr[2] ?? 1;
+                    wrapper.setLocalScale(sx, sy, sz);
+                    app.root.addChild(wrapper);
+                    placedDecorEntities.push(wrapper);
+                    const p = wrapper.getPosition();
+                    console.log(`📦 已摆放「${title}」 (${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)})`);
+                    // 与跑步机相同：从 GLB instantiate 根节点抽 mesh；stomp/销毁仍用外层 wrapper
+                    schedulePlacedDecorCollisionBuild(renderRoot, wrapper.name, wrapper);
+                }
+
+                async function placeCatalogEntry(entry) {
+                    try {
+                        if (entry.kind === 'treadmill') {
+                            placeTreadmillNearCharacter();
+                        } else if (entry.kind === 'pushCrate') {
+                            placePushableCrateNearCharacter();
+                        } else if (entry.kind === 'container') {
+                            await placeLoadedContainerDecor(entry.url, entry.title, entry.scale || [1, 1, 1]);
+                        }
+                        closePlacementPanel();
+                    } catch (err) {
+                        console.error('摆放失败:', err);
+                    }
+                }
+
+                const placementOverlay = document.getElementById('placement-overlay');
+                const placementGrid = document.getElementById('placement-grid');
+                const placementCloseBtn = document.getElementById('placement-close');
+                let placementPanelOpen = false;
+
+                function closePlacementPanel() {
+                    placementOverlay.style.display = 'none';
+                    placementOverlay.setAttribute('aria-hidden', 'true');
+                    placementPanelOpen = false;
+                }
+
+                function openPlacementPanel() {
+                    if (portalSwitching) return;
+                    Object.keys(keys).forEach((code) => { keys[code] = false; });
+                    placementOverlay.style.display = 'flex';
+                    placementOverlay.setAttribute('aria-hidden', 'false');
+                    placementPanelOpen = true;
+                    if (typeof loadAiProps === 'function') loadAiProps();
+                }
+
+                function togglePlacementPanel() {
+                    if (placementPanelOpen) closePlacementPanel();
+                    else openPlacementPanel();
+                }
+
+                function setupPlacementPanel() {
+                    const catalog = buildPlacementCatalogFromPresets();
+                    placementGrid.innerHTML = '';
+                    catalog.forEach((entry) => {
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.className = 'placement-card';
+                        btn.innerHTML = `<span class="placement-card-icon">${entry.icon}</span><span class="placement-card-title">${entry.title}</span>`;
+                        btn.addEventListener('click', () => { void placeCatalogEntry(entry); });
+                        placementGrid.appendChild(btn);
+                    });
+                    placementCloseBtn.addEventListener('click', closePlacementPanel);
+                    placementOverlay.addEventListener('click', (e) => {
+                        if (e.target === placementOverlay) closePlacementPanel();
+                    });
+                    document.getElementById('placement-panel').addEventListener('click', (ev) => ev.stopPropagation());
+                }
+                setupPlacementPanel();
+
+                // ========== 本地缓存道具 ==========
+                // 页面位于 /run/，公开部署的只读缓存接口位于站点根目录 /api/。
+                // 用页面 URL 解析，兼容本地启动器和 GitHub Pages 项目子路径。
+                const PROP_API_URL = new URL('../api/prop/list', window.location.href).href;
+                const aiPropGrid = document.getElementById('ai-prop-generated');
+
+                function aiPropCard(item) {
+                    const card = document.createElement('div');
+                    card.className = 'ai-prop-card';
+                    const hasPreview = !!item.preview;
+                    card.innerHTML = `${hasPreview
+                        ? `<img src="${item.preview}" alt="${item.name}">`
+                        : '<span style="font-size:28px">🎁</span>'
+                    }<span class="ai-prop-name">${item.name}</span>`;
+                    card.title = `点击摆放「${item.name}」`;
+                    card.addEventListener('click', () => {
+                        void placeLoadedContainerDecor(item.file, item.name, [1, 1, 1]);
+                        closePlacementPanel();
+                    });
+                    return card;
+                }
+
+                async function loadAiProps() {
+                    try {
+                        const r = await fetch(PROP_API_URL);
+                        if (!r.ok) return;
+                        const d = await r.json();
+                        aiPropGrid.innerHTML = '';
+                        (d.props || []).forEach(p => aiPropGrid.appendChild(aiPropCard(p)));
+                    } catch (_) {}
+                }
+
+                loadAiProps();
+
+                // Mirror and sunflower passages use the same interaction and fade.
+                const portalPrompt = document.getElementById('interaction-prompt');
+                const portalPromptText = portalPrompt?.querySelector('span');
+                const transitionOverlay = document.getElementById('transition-overlay');
+                let portalSwitching = false;
+                let portalNearby = false;
+                let nearbyPortalKind = null;
+                let portalPromptLocked = null;
+                let portalPromptController = null;
+
+                function isGameplayInputLocked() {
+                    return placementPanelOpen || portalSwitching ||
+                        Boolean(window.EndlessDreamGameShell?.isPaused?.()) ||
+                        Boolean(dreamController?.isInputLocked());
+                }
+
+                function setPortalPrompt(kind) {
+                    const nextKind = kind || null;
+                    const nextNearby = Boolean(nextKind);
+                    const nextLocked = isGameplayInputLocked();
+                    const kindChanged = nearbyPortalKind !== nextKind;
+                    const controllerChanged = portalPromptController !== dreamController;
+                    if (!kindChanged && !controllerChanged &&
+                        portalNearby === nextNearby && portalPromptLocked === nextLocked) {
+                        return;
+                    }
+                    nearbyPortalKind = nextKind;
+                    portalNearby = nextNearby;
+                    portalPromptLocked = nextLocked;
+                    portalPromptController = dreamController;
+                    if ((kindChanged || controllerChanged) && portalPromptText) {
+                        const label = dreamController?.getPortalLabel(nextKind) ||
+                            (nextKind === 'sunflower' ? '触碰向日葵' : '触碰镜面');
+                        if (portalPromptText.textContent !== label) {
+                            portalPromptText.textContent = label;
+                        }
+                    }
+                    portalPrompt?.classList.toggle(
+                        'is-visible',
+                        nextNearby && !nextLocked
+                    );
+                }
+
+                function enterNearbyPortal() {
+                    if (portalSwitching || placementPanelOpen || dreamController?.isInputLocked()) return;
+                    const playerPosition = characterEntity.getPosition();
+                    updatePortalInteraction(
+                        playerPosition.x, playerPosition.y, playerPosition.z
+                    );
+                    if (!portalNearby) return;
+                    const isSunflowerPortal = nearbyPortalKind === 'sunflower';
+                    if (isSunflowerPortal && dreamController && !dreamController.canEnterSunflower()) {
+                        dreamController.denySunflower();
+                        return;
+                    }
+                    if (isSunflowerPortal) {
+                        dreamController?.offerFlower();
+                    }
+                    const destination = isSunflowerPortal
+                        ? 'run/upside-room/index.html'
+                        : 'run/greenhouse/index.html';
+                    portalSwitching = true;
+                    clearGameplayKeys();
+                    setPortalPrompt(null);
+                    document.exitPointerLock?.();
+                    transitionOverlay?.classList.add('is-active');
+                    window.setTimeout(() => {
+                        const destinationUrl = new URL(destination, document.baseURI).href;
+                        if (isSunflowerPortal) {
+                            window.location.replace(destinationUrl);
+                        } else {
+                            window.location.href = destinationUrl;
+                        }
+                    }, 720);
+                }
+
+                function portalDistanceSquared(x, z, portal) {
+                    const position = portal?.approachPosition;
+                    if (!Array.isArray(position) || position.length < 3) return Infinity;
+                    const offsetX = x - position[0];
+                    const offsetZ = z - position[2];
+                    return offsetX * offsetX + offsetZ * offsetZ;
+                }
+
+                function isInsidePortalApproach(x, y, z, portal, useExitRadius = false) {
+                    const position = portal?.approachPosition;
+                    const enterRadius = portal?.enterRadius;
+                    if (!Array.isArray(position) || position.length < 3 ||
+                        !position.slice(0, 3).every(Number.isFinite) ||
+                        !Number.isFinite(enterRadius) || enterRadius <= 0) {
+                        return false;
+                    }
+                    const radius = useExitRadius && Number.isFinite(portal.exitRadius)
+                        ? Math.max(enterRadius, portal.exitRadius)
+                        : enterRadius;
+                    if (Number.isFinite(portal.maxVerticalDistance) &&
+                        Math.abs(y - position[1]) > portal.maxVerticalDistance) {
+                        return false;
+                    }
+                    return portalDistanceSquared(x, z, portal) <= radius * radius;
+                }
+
+                function isPortalAvailable(kind) {
+                    if (portalSwitching) return false;
+                    if (kind === 'mirror') {
+                        return Boolean(SCENE_CONFIG.mirror) &&
+                            (!dreamController || dreamController.isMirrorAvailable());
+                    }
+                    if (kind === 'sunflower') {
+                        return !sunKeyOwned && Boolean(SCENE_CONFIG.sunflower) &&
+                            (!dreamController || dreamController.isSunflowerAvailable());
+                    }
+                    return false;
+                }
+
+                function updatePortalInteraction(x, y, z) {
+                    const mirror = SCENE_CONFIG.mirror;
+                    const sunflower = SCENE_CONFIG.sunflower;
+                    let kind = null;
+
+                    // Keep the active prompt through a slightly larger exit radius so
+                    // collision correction at the boundary cannot make it flicker.
+                    const activePortal = nearbyPortalKind === 'mirror' ? mirror
+                        : nearbyPortalKind === 'sunflower' ? sunflower
+                        : null;
+                    if (activePortal && isPortalAvailable(nearbyPortalKind) &&
+                        isInsidePortalApproach(x, y, z, activePortal, true)) {
+                        kind = nearbyPortalKind;
+                    }
+
+                    if (!kind) {
+                        const candidates = [];
+                        if (isPortalAvailable('mirror') &&
+                            isInsidePortalApproach(x, y, z, mirror)) {
+                            candidates.push({
+                                kind: 'mirror',
+                                distanceSquared: portalDistanceSquared(x, z, mirror)
+                            });
+                        }
+                        if (isPortalAvailable('sunflower') &&
+                            isInsidePortalApproach(x, y, z, sunflower)) {
+                            candidates.push({
+                                kind: 'sunflower',
+                                distanceSquared: portalDistanceSquared(x, z, sunflower)
+                            });
+                        }
+                        candidates.sort((a, b) => a.distanceSquared - b.distanceSquared);
+                        kind = candidates[0]?.kind || null;
+                    }
+                    setPortalPrompt(kind);
+                }
+                const camera = new pc.Entity('Camera', app);
+                camera.addComponent('camera', {
+                    clearColor: new pc.Color(0.78, 0.80, 0.82),
+                    fov: getSceneCameraFov(),
+                    nearClip: Number.isFinite(SCENE_CONFIG.cameraNearClip)
+                        ? SCENE_CONFIG.cameraNearClip : 0.08,
+                    farClip: Number.isFinite(SCENE_CONFIG.cameraFarClip)
+                        ? SCENE_CONFIG.cameraFarClip : 30,
+                    toneMapping: pc.TONEMAP_NEUTRAL
+                });
+                app.root.addChild(camera);
+
+                // ========== 创建灯光 ==========
+                const light = new pc.Entity('Light', app);
+                light.addComponent('light', {
+                    type: 'directional',
+                    intensity: 1.15,
+                    color: new pc.Color(1, 1, 1),
+                    castShadows: false,
+                    shadowBias: 0.2,
+                    shadowDistance: 12,
+                    shadowResolution: 1024
+                });
+                light.setLocalEulerAngles(45, 30, 0);
+                app.root.addChild(light);
+                const fillLight = new pc.Entity('FillLight', app);
+                fillLight.addComponent('light', {
+                    type: 'directional',
+                    intensity: 0.35,
+                    color: new pc.Color(0.75, 0.82, 1),
+                    castShadows: false
+                });
+                fillLight.setLocalEulerAngles(20, -120, 0);
+                app.root.addChild(fillLight);
+                app.scene.ambientLight = new pc.Color(0.48, 0.50, 0.55);
+
+                // ========== 创建坐标轴可视化 ==========
+                const axisLength = 2;  // 坐标轴长度
+                const axisThickness = 0.02;  // 坐标轴粗细
+                
+                function createAxisLine(color, scaleX, scaleY, scaleZ, posX, posY, posZ) {
+                    const axis = new pc.Entity('', app);
+                    axis.addComponent('render', { type: 'box' });
+                    const mat = new pc.StandardMaterial();
+                    mat.diffuse = color;
+                    mat.emissive = color;
+                    mat.useLighting = false;
+                    mat.update();
+                    axis.render.meshInstances[0].material = mat;
+                    axis.setLocalScale(scaleX, scaleY, scaleZ);
+                    axis.setLocalPosition(posX, posY, posZ);
+                    return axis;
+                }
+                
+                // 坐标轴容器
+                const axisHelper = new pc.Entity('AxisHelper', app);
+                
+                // X轴 - 红色
+                const xAxis = createAxisLine(
+                    new pc.Color(1, 0, 0),
+                    axisLength, axisThickness, axisThickness,
+                    axisLength / 2, 0, 0
+                );
+                xAxis.name = 'X-Axis';
+                axisHelper.addChild(xAxis);
+                
+                // Y轴 - 绿色
+                const yAxis = createAxisLine(
+                    new pc.Color(0, 1, 0),
+                    axisThickness, axisLength, axisThickness,
+                    0, axisLength / 2, 0
+                );
+                yAxis.name = 'Y-Axis';
+                axisHelper.addChild(yAxis);
+                
+                // Z轴 - 蓝色
+                const zAxis = createAxisLine(
+                    new pc.Color(0, 0, 1),
+                    axisThickness, axisThickness, axisLength,
+                    0, 0, axisLength / 2
+                );
+                zAxis.name = 'Z-Axis';
+                axisHelper.addChild(zAxis);
+                
+                // 原点球
+                const origin = new pc.Entity('Origin', app);
+                origin.addComponent('render', { type: 'sphere' });
+                const originMat = new pc.StandardMaterial();
+                originMat.diffuse = new pc.Color(1, 1, 1);
+                originMat.emissive = new pc.Color(0.5, 0.5, 0.5);
+                originMat.update();
+                origin.render.meshInstances[0].material = originMat;
+                origin.setLocalScale(0.1, 0.1, 0.1);
+                axisHelper.addChild(origin);
+                
+                // 默认隐藏坐标轴（按 3 切换）
+                axisHelper.enabled = false;
+                app.root.addChild(axisHelper);
+                console.log('📐 坐标轴: X(红) Y(绿) Z(蓝)');
+                
+                // ========== 创建角色碰撞体可视化 ==========
+                function createCharacterColliderVisual() {
+                    // 主碰撞体（红色半透明盒子）
+                    characterColliderEntity = new pc.Entity('CharacterCollider', app);
+                    characterColliderEntity.addComponent('render', { type: 'box' });
+                    
+                    const colliderMat = new pc.StandardMaterial();
+                    colliderMat.diffuse = new pc.Color(1, 0.3, 0.3);
+                    colliderMat.emissive = new pc.Color(0.3, 0.1, 0.1);
+                    colliderMat.opacity = 0.5;
+                    colliderMat.blendType = pc.BLEND_NORMAL;
+                    colliderMat.depthWrite = false;
+                    colliderMat.update();
+                    
+                    characterColliderEntity.render.meshInstances[0].material = colliderMat;
+                    characterColliderEntity.setLocalScale(
+                        characterColliderConfig.width * 2,
+                        characterColliderConfig.height,
+                        characterColliderConfig.depth * 2
+                    );
+                    characterColliderEntity.enabled = false;
+                    app.root.addChild(characterColliderEntity);
+                    
+                    // 脚底位置标记（黄色小方块）
+                    characterFootEntity = new pc.Entity('CharacterFoot', app);
+                    characterFootEntity.addComponent('render', { type: 'box' });
+                    
+                    const footMat = new pc.StandardMaterial();
+                    footMat.diffuse = new pc.Color(1, 1, 0);
+                    footMat.emissive = new pc.Color(0.5, 0.5, 0);
+                    footMat.update();
+                    
+                    characterFootEntity.render.meshInstances[0].material = footMat;
+                    characterFootEntity.setLocalScale(0.1, 0.05, 0.1);
+                    characterFootEntity.enabled = false;
+                    app.root.addChild(characterFootEntity);
+                    
+                    console.log('✅ 角色碰撞体可视化已创建（按 4 键切换显示）');
+                }
+                
+                createCharacterColliderVisual();
+
+                // ========== 控制逻辑 ==========
+                const keys = {};
+                const gameplayKeyCodes = new Set([
+                    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
+                    'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyE', 'Space',
+                    'ShiftLeft', 'ShiftRight', 'AltLeft', 'AltRight'
+                ]);
+                const heldGameplayKeys = new Set();
+                let jumpRequested = false;
+
+                function restoreHeldGameplayKeys() {
+                    for (const code of gameplayKeyCodes) {
+                        keys[code] = heldGameplayKeys.has(code);
+                    }
+                }
+
+                function clearGameplayKeys() {
+                    heldGameplayKeys.clear();
+                    Object.keys(keys).forEach((code) => { keys[code] = false; });
+                    jumpRequested = false;
+                }
+
+                window.addEventListener('keydown', (e) => {
+                    const wasHeld = heldGameplayKeys.has(e.code);
+                    if (gameplayKeyCodes.has(e.code)) heldGameplayKeys.add(e.code);
+                    if (isGameplayInputLocked()) {
+                        keys[e.code] = false;
+                        if (gameplayKeyCodes.has(e.code)) e.preventDefault();
+                        return;
+                    }
+                    keys[e.code] = true;
+                    if (e.code === 'Space' && !wasHeld && !e.repeat) jumpRequested = true;
+                    if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(e.code)) {
+                        e.preventDefault();
+                    }
+                });
+                window.addEventListener('keyup', (e) => {
+                    heldGameplayKeys.delete(e.code);
+                    keys[e.code] = false;
+                });
+
+                const moveSpeed = 2.25;
+                const runSpeedMul = 1.55;
+                let cameraYaw = initialCharacterYaw;
+                let cameraPitch = Number.isFinite(SCENE_CONFIG.spawnPitch)
+                    ? SCENE_CONFIG.spawnPitch : 0;
+                const firstPersonHud = document.getElementById('first-person-hud');
+                const pointerLockPrompt = document.getElementById('pointer-lock-prompt');
+
+                function syncPointerLockPrompt() {
+                    const unlocked = document.pointerLockElement !== canvas && !isGameplayInputLocked();
+                    pointerLockPrompt?.classList.toggle('is-visible', unlocked);
+                }
+                
+                canvas.addEventListener('mousedown', () => {
+                    if (isGameplayInputLocked()) return;
+                    canvas.requestPointerLock?.();
+                });
+
+                window.addEventListener('blur', () => {
+                    clearGameplayKeys();
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (document.pointerLockElement !== canvas || isGameplayInputLocked()) return;
+                    if (dreamController) {
+                        const nextLook = dreamController.applyLookDelta(cameraYaw, cameraPitch, e.movementX, e.movementY);
+                        cameraYaw = nextLook.yaw;
+                        cameraPitch = nextLook.pitch;
+                        return;
+                    }
+                    cameraYaw -= e.movementX * 0.08;
+                    cameraPitch -= e.movementY * 0.08;
+                    cameraPitch = pc.math.clamp(cameraPitch, -75, 75);
+                });
+
+                function handlePointerLockChange() {
+                    if (document.pointerLockElement !== canvas) clearGameplayKeys();
+                    syncPointerLockPrompt();
+                }
+
+                document.addEventListener('pointerlockchange', handlePointerLockChange);
+                app.on('destroy', () => document.removeEventListener('pointerlockchange', handlePointerLockChange));
+
+                // 阻止滚轮引发浏览器级页面移动。
+                canvas.addEventListener('wheel', (e) => {
+                    e.preventDefault();
+                }, { passive: false });
+                
+                let characterYaw = initialCharacterYaw;
+                
+                // 快捷键
+                window.addEventListener('keydown', (e) => {
+                    if (window.EndlessDreamGameShell?.isPaused?.()) {
+                        clearGameplayKeys();
+                        return;
+                    }
+                    if (dreamController?.handleKeyDown(e)) {
+                        e.preventDefault();
+                        clearGameplayKeys();
+                        return;
+                    }
+                    if (portalSwitching) {
+                        e.preventDefault();
+                        return;
+                    }
+                    if (placementPanelOpen) {
+                        if (e.code === 'Escape' || e.code === 'AltLeft' || e.code === 'AltRight') {
+                            e.preventDefault();
+                            closePlacementPanel();
+                        }
+                        return;
+                    }
+                    if (!devMode) {
+                        if (e.code === 'KeyE' && !e.repeat && portalNearby) {
+                            enterNearbyPortal();
+                        }
+                        return;
+                    }
+                    if (e.code === 'Digit1') {
+                        if (collisionMeshEntity) {
+                            collisionMeshVisible = !collisionMeshVisible;
+                            collisionMeshEntity.enabled = collisionMeshVisible;
+                            console.log('🟢 碰撞网格可视化: ' + (collisionMeshVisible ? '显示' : '隐藏'));
+                        } else {
+                            console.warn('⚠️ 碰撞网格未加载');
+                        }
+                    }
+                    // 数字键 2 - 切换高斯场景可视化
+                    if (e.code === 'Digit2') {
+                        splatVisible = !splatVisible;
+                        splatEntity.enabled = splatVisible;
+                        console.log('🔵 高斯场景可视化: ' + (splatVisible ? '显示' : '隐藏'));
+                    }
+                    // 数字键 3 - 切换坐标轴可视化
+                    if (e.code === 'Digit3') {
+                        axisHelper.enabled = !axisHelper.enabled;
+                        console.log('📐 坐标轴: ' + (axisHelper.enabled ? '显示' : '隐藏') + ' (X红 Y绿 Z蓝)');
+                    }
+                    // 数字键 4 - 切换角色碰撞体可视化
+                    if (e.code === 'Digit4') {
+                        characterColliderVisible = !characterColliderVisible;
+                        if (characterColliderEntity) characterColliderEntity.enabled = characterColliderVisible;
+                        if (characterFootEntity) characterFootEntity.enabled = characterColliderVisible;
+                        console.log('🔴 角色碰撞体: ' + (characterColliderVisible ? '显示' : '隐藏'));
+                    }
+                    if (e.code === 'KeyC') {
+                        collisionEnabled = !collisionEnabled;
+                        if (collisionEnabled) recoverBlockedCharacterPose();
+                        console.log('碰撞检测: ' + (collisionEnabled ? '开启' : '关闭'));
+                    }
+                    if (e.code === 'KeyP') {
+                        const pos = characterEntity.getPosition();
+                        console.log(`角色位置: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+                        debugPanel.style.display = debugPanel.style.display === 'none' ? 'block' : 'none';
+                    }
+                    if (e.code === 'KeyL') {
+                        positionLocked = !positionLocked;
+                        if (positionLocked) {
+                            velocityY = 0;
+                            isGrounded = true;
+                            isJumping = false;
+                        }
+                        console.log('🔒 位置锁定: ' + (positionLocked ? '开启（悬浮）' : '关闭'));
+                    }
+                    if (e.code === 'KeyR') {
+                        toggleRecording();
+                    }
+                    if ((e.code === 'AltLeft' || e.code === 'AltRight') && !e.repeat) {
+                        const t = e.target;
+                        if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+                        e.preventDefault();
+                        togglePlacementPanel();
+                    }
+                    if (e.code === 'KeyE' && !e.repeat && portalNearby) {
+                        enterNearbyPortal();
+                    }
+                    if (e.code === 'Escape') {
+                        e.preventDefault();
+                    }
+                });
+                
+                let lastGroundY = spawnY;
+                let cameraSmoothY = null;
+                let cameraStableGroundY = null;
+                let cameraGroundCandidateY = null;
+                let cameraGroundCandidateTime = 0;
+                const cameraEyeHeight = Number.isFinite(SCENE_CONFIG.eyeHeight)
+                    ? SCENE_CONFIG.eyeHeight : characterHeight * 0.86;
+                const cameraGroundNoiseBand = Math.max(
+                    0.012,
+                    (voxelCollision?.res || 0.02) * 1.1
+                );
+
+                function getStableCameraGroundY(footY, dt) {
+                    if (!Number.isFinite(cameraStableGroundY)) {
+                        cameraStableGroundY = footY;
+                        cameraGroundCandidateY = null;
+                        return footY;
+                    }
+
+                    const delta = footY - cameraStableGroundY;
+                    if (Math.abs(delta) <= cameraGroundNoiseBand) {
+                        cameraGroundCandidateY = null;
+                        cameraGroundCandidateTime = 0;
+                        return cameraStableGroundY;
+                    }
+
+                    if (!Number.isFinite(cameraGroundCandidateY) ||
+                        Math.abs(footY - cameraGroundCandidateY) > cameraGroundNoiseBand * 2.5) {
+                        cameraGroundCandidateY = footY;
+                        cameraGroundCandidateTime = 0;
+                    } else {
+                        cameraGroundCandidateY = footY;
+                        cameraGroundCandidateTime += dt;
+                    }
+
+                    if (Math.abs(delta) >= GROUND_MAX_STEP_UP * 0.75 ||
+                        cameraGroundCandidateTime >= 0.06) {
+                        cameraStableGroundY = cameraGroundCandidateY;
+                        cameraGroundCandidateY = null;
+                        cameraGroundCandidateTime = 0;
+                    }
+                    return cameraStableGroundY;
+                }
+
+                let debugUpdateAccumulator = 0;
+                 
+                app.on('update', (dt) => {
+                    if (window.EndlessDreamGameShell?.isPaused?.()) {
+                        clearGameplayKeys();
+                        return;
+                    }
+
+                    dt = Math.min(0.05, Math.max(0, Number(dt) || 0));
+
+                    const gameplayInputLocked = isGameplayInputLocked();
+
+                    const charPos = characterEntity.getPosition();
+                    const frameStartX = charPos.x;
+                    const frameStartZ = charPos.z;
+                    let finalX = charPos.x;
+                    let finalY = charPos.y;
+                    let finalZ = charPos.z;
+
+                    // ========== 跳跃处理 ==========
+                    const jumpPressed = jumpRequested;
+                    jumpRequested = false;
+                    if (!gameplayInputLocked && jumpPressed && isGrounded && !isJumping) {
+                        velocityY = jumpForce;
+                        isJumping = true;
+                        isGrounded = false;
+                        
+                    }
+
+                    // ========== 重力 + 地面检测 ==========
+                    if (positionLocked) {
+                        // 位置锁定：不施加重力，角色悬浮在当前位置
+                        velocityY = 0;
+                    } else if (isGrounded && !isJumping) {
+                        // ---- 着地状态 ----
+                        const currentGroundY = getContinuousGroundY(finalX, finalY, finalZ);
+                        lastGroundY = currentGroundY;
+                        velocityY = 0;
+                        if (Number.isFinite(currentGroundY) &&
+                            canSnapToGround(finalX, currentGroundY, finalZ)) {
+                            finalY = currentGroundY;
+                        } else {
+                            // 地面上方净空不足时不能把完整胶囊强行塞进去。
+                            isGrounded = false;
+                        }
+                    } else {
+                        // ---- 空中状态（跳跃中或下落中）----
+                        const oldY = finalY;
+                        velocityY += gravity * dt;
+                        const impactVelocityY = velocityY;
+                        const candidateY = oldY + impactVelocityY * dt;
+                        const verticalMove = sweepCharacterY(finalX, oldY, finalZ, candidateY);
+                        finalY = verticalMove.y;
+
+                        // 撞顶或向下碰到实体时立即消除朝碰撞面的速度；落地逻辑仍使用
+                        // 碰撞前速度，以保留动态道具的踩踏判定与反弹力度。
+                        if (verticalMove.hit) velocityY = 0;
+
+                        if (impactVelocityY <= 0) {
+                            const landingEpsilon = Math.max(
+                                0.025,
+                                voxelCollision ? voxelCollision.res * 0.75 : 0.04
+                            );
+                            // 从本帧旧脚底附近向下找地面，不能再从“新头顶”向下找，
+                            // 否则穿过顶板后会错误吸附到顶板上表面。
+                            const gAir = getGroundQuery(finalX, finalZ, oldY + landingEpsilon);
+                            const sampledGroundY = gAir.y;
+                            const currentGroundY = collisionEnabled &&
+                                sampledGroundY > groundY + GROUND_SKIN
+                                ? recoverCharacterFootWithinSkin(
+                                    finalX, sampledGroundY, finalZ
+                                )
+                                : sampledGroundY;
+                            lastGroundY = currentGroundY;
+
+                            const crossedGround = crossedGroundThisFrame(
+                                oldY, verticalMove.y, currentGroundY, landingEpsilon
+                            );
+                            if (Number.isFinite(currentGroundY) && crossedGround &&
+                                canSnapToGround(finalX, currentGroundY, finalZ)) {
+                                const stompEnt = resolveStompDecorTarget(
+                                    finalX, finalZ, currentGroundY, impactVelocityY, isJumping, gAir.stompOwner
+                                );
+                                if (stompEnt) {
+                                    destroyStompableDecor(stompEnt);
+                                    const bounceY = currentGroundY + 0.06;
+                                    finalY = canSnapToGround(finalX, bounceY, finalZ)
+                                        ? bounceY
+                                        : currentGroundY;
+                                    velocityY = STOMP_BOUNCE_VEL;
+                                    isGrounded = false;
+                                    isJumping = true;
+                                } else {
+                                    finalY = currentGroundY;
+                                    velocityY = 0;
+                                    isGrounded = true;
+                                    if (isJumping) {
+                                        isJumping = false;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 防止掉出世界
+                    if (finalY < groundY) {
+                        finalY = groundY;
+                        velocityY = 0;
+                        isGrounded = true;
+                    }
+
+                    // ========== 水平移动 ==========
+                    let moveX = 0;
+                    let moveZ = 0;
+                    let groundedSweepY = null;
+
+                    if (!gameplayInputLocked) {
+                    if (keys['ArrowUp'] || keys['KeyW']) moveZ = 1;
+                    if (keys['ArrowDown'] || keys['KeyS']) moveZ = -1;
+                    if (keys['ArrowLeft'] || keys['KeyA']) moveX = -1;
+                    if (keys['ArrowRight'] || keys['KeyD']) moveX = 1;
+                    }
+
+                    if (moveX !== 0 || moveZ !== 0) {
+                        const yawRad = cameraYaw * Math.PI / 180;
+                        
+                        const forwardX = -Math.sin(yawRad);
+                        const forwardZ = -Math.cos(yawRad);
+                        const rightX = Math.cos(yawRad);
+                        const rightZ = -Math.sin(yawRad);
+
+                        let worldMoveX = forwardX * moveZ + rightX * moveX;
+                        let worldMoveZ = forwardZ * moveZ + rightZ * moveX;
+
+                        const len = Math.sqrt(worldMoveX * worldMoveX + worldMoveZ * worldMoveZ);
+                        if (len > 0) {
+                            worldMoveX /= len;
+                            worldMoveZ /= len;
+                        }
+
+                        const shiftHeld = keys['ShiftLeft'] || keys['ShiftRight'];
+                        const useRunMove = shiftHeld;
+                        const moveDist = moveSpeed * (useRunMove ? runSpeedMul : 1) * dt;
+                        
+                        let newX = finalX + worldMoveX * moveDist;
+                        let newZ = finalZ + worldMoveZ * moveDist;
+                        const pushedOwners = tryPushPropsForCharacterMove(finalX, finalY, finalZ, worldMoveX * moveDist, worldMoveZ * moveDist);
+                        
+                        // 正常着地时使用贴地 CCD：水平每个子步都跟随最近合法地面，
+                        // 这样坡面/5cm 高度变化不会再被旧脚底高度误判成墙。
+                        // 跳跃中仍使用固定 Y 的 CCD，保持空中碰撞语义不变。
+                        if (collisionEnabled) {
+                            if (isGrounded && !isJumping) {
+                                const intendedX = newX;
+                                const intendedZ = newZ;
+                                const swept = sweepCharacterGrounded(
+                                    finalX, finalY, finalZ, intendedX, intendedZ, pushedOwners
+                                );
+                                newX = swept.x;
+                                newZ = swept.z;
+                                if (Number.isFinite(swept.y) && swept.grounded) {
+                                    groundedSweepY = swept.y;
+                                } else {
+                                    // 起点异常或地面断开时，退回固定高度 CCD，
+                                    // 让重力系统在下一帧接管，而不是把角色塞进边缘。
+                                    const fallback = sweepCharacterXZ(
+                                        finalX, finalY, finalZ, intendedX, intendedZ, pushedOwners
+                                    );
+                                    newX = fallback.x;
+                                    newZ = fallback.z;
+                                    isGrounded = false;
+                                }
+                            } else {
+                                const swept = sweepCharacterXZ(finalX, finalY, finalZ, newX, newZ, pushedOwners);
+                                newX = swept.x;
+                                newZ = swept.z;
+                            }
+                        }
+
+                        finalX = newX;
+                        finalZ = newZ;
+
+                        characterYaw = Math.atan2(worldMoveX, worldMoveZ) * 180 / Math.PI;
+                        characterEntity.setLocalEulerAngles(0, characterYaw, 0);
+                    }
+
+                    if (isGrounded && !isJumping) {
+                        const newGroundY = groundedSweepY !== null
+                            ? groundedSweepY
+                            : lastGroundY;
+                        lastGroundY = newGroundY;
+                        if (Number.isFinite(newGroundY) &&
+                            Math.abs(newGroundY - finalY) <= GROUND_MAX_STEP_DOWN + GROUND_SKIN &&
+                            canSnapToGround(finalX, newGroundY, finalZ)) {
+                            finalY = newGroundY;
+                        } else {
+                            isGrounded = false;
+                        }
+                    }
+
+                    if (collisionEnabled && !positionLocked &&
+                        isGrounded && !isJumping && Number.isFinite(lastGroundY) &&
+                        Math.abs(finalY - lastGroundY) <= GROUND_SKIN + 1e-6 &&
+                        !checkCollisionXZ(finalX, finalY, finalZ)) {
+                        lastSafePose.x = finalX;
+                        lastSafePose.y = finalY;
+                        lastSafePose.z = finalZ;
+                    }
+                     
+                    characterEntity.setPosition(finalX, finalY, finalZ);
+                    updatePortalInteraction(finalX, finalY, finalZ);
+                    dreamController?.updateExitTrigger(frameStartX, frameStartZ, finalX, finalZ);
+
+                    
+                    // ========== 更新角色碰撞体可视化位置 ==========
+                    if (characterColliderVisible) {
+                        const cfg = characterColliderConfig;
+                        // 胶囊体以脚底为原点，可视化盒体应居中于身高中点
+                        if (characterColliderEntity) {
+                            characterColliderEntity.setPosition(
+                                finalX + cfg.offsetX,
+                                finalY + cfg.offsetY + cfg.height * 0.5,
+                                finalZ + cfg.offsetZ
+                            );
+                        }
+                        // 脚底位置标记
+                        if (characterFootEntity) {
+                            characterFootEntity.setPosition(finalX, finalY, finalZ);
+                        }
+                    }
+
+                    // 物理脚底保持精确；相机只过滤一个体素宽度内的接地量化噪声。
+                    const newCharPos = characterEntity.getPosition();
+                    let cameraFootY = newCharPos.y;
+                    if (isGrounded && !isJumping) {
+                        cameraFootY = getStableCameraGroundY(newCharPos.y, dt);
+                    } else {
+                        cameraGroundCandidateY = null;
+                        cameraGroundCandidateTime = 0;
+                    }
+                    const targetCameraY = cameraFootY + cameraEyeHeight;
+                    if (!Number.isFinite(cameraSmoothY)) cameraSmoothY = targetCameraY;
+                    const cameraSmoothTime = isGrounded && !isJumping ? 0.085 : 0.045;
+                    const cameraAlpha = 1 - Math.exp(-dt / cameraSmoothTime);
+                    const cameraDelta = (targetCameraY - cameraSmoothY) * cameraAlpha;
+                    const maxCameraStep = (isGrounded && !isJumping ? 2.5 : 8.0) * dt;
+                    cameraSmoothY += pc.math.clamp(cameraDelta, -maxCameraStep, maxCameraStep);
+                    camera.setPosition(newCharPos.x, cameraSmoothY, newCharPos.z);
+                    camera.setLocalEulerAngles(cameraPitch, cameraYaw, 0);
+                    if (!window.EndlessDreamGameShell?.isPaused?.()) {
+                        dreamController?.update(dt);
+                    }
+                    
+                    // Keep diagnostics out of the production path and avoid rebuilding
+                    // hidden DOM every frame while profiling with ?dev=1.
+                    if (devMode && debugPanel.style.display !== 'none') {
+                        debugUpdateAccumulator += dt;
+                        if (debugUpdateAccumulator >= 0.2) {
+                            debugUpdateAccumulator %= 0.2;
+                            debugPanel.innerHTML = `
+                                视角: 第一人称<br>
+                                位置: (${newCharPos.x.toFixed(2)}, ${newCharPos.y.toFixed(2)}, ${newCharPos.z.toFixed(2)})<br>
+                                重力: ${isGrounded ? '✅着地' : '⬇️空中'} | 速度Y: ${velocityY.toFixed(2)} | 跳跃: ${isJumping ? '是' : '否'} | 🔒锁定: ${positionLocked ? '是' : '否'}<br>
+                                地面高度: ${Number.isFinite(lastGroundY) ? lastGroundY.toFixed(2) : '无'}<br>
+                                碰撞: ${collisionEnabled ? '开' : '关'} | 体素${voxelCollision ? `✅${voxelCollision.res}m/深${voxelCollision.treeDepth}` : '❌未加载'} | 道具三角${propCollisionTriangles.length}<br>
+                                🟢碰撞网格: ${collisionMeshVisible ? '显示' : '隐藏'} | 🔵高斯: ${splatVisible ? '显示' : '隐藏'}
+                            `;
+                        }
+                    } else {
+                        debugUpdateAccumulator = 0;
+                    }
+                });
+
+                loadingEl.style.display = 'none';
+                debugPanel.style.display = 'none';
+                firstPersonHud?.classList.add('is-active');
+                firstPersonHud?.setAttribute('aria-hidden', 'false');
+                dreamController = window.EndlessDream.createController({
+                    app,
+                    camera,
+                    characterEntity,
+                    catEntity: blackCatEntity,
+                    catModel: blackCatModel,
+                    resumeSource,
+                    exitDoor: SCENE_CONFIG.exitDoor,
+                    getLook: () => ({ yaw: cameraYaw, pitch: cameraPitch }),
+                    setLook: (yaw, pitch) => {
+                        cameraYaw = yaw;
+                        cameraPitch = pitch;
+                    },
+                    onInputLockChange: () => {
+                        clearGameplayKeys();
+                        syncPointerLockPrompt();
+                    },
+                    getGroundY: (x, z, currentY) => getContinuousGroundY(x, currentY, z)
+                });
+                window.__endlessDreamController = dreamController;
+
+                if (devMode) {
+                    const getMainRoomDebugState = () => {
+                        const position = characterEntity.getPosition();
+                        return {
+                            playerPosition: [position.x, position.y, position.z],
+                            nearbyPortalKind,
+                            promptVisible: portalPrompt?.classList.contains('is-visible') || false,
+                            promptText: portalPromptText?.textContent || '',
+                            portals: {
+                                mirror: SCENE_CONFIG.mirror,
+                                sunflower: SCENE_CONFIG.sunflower
+                            }
+                        };
+                    };
+                    const mainRoomDebug = Object.freeze({
+                        getInteractionState: getMainRoomDebugState,
+                        setPlayerPose: (x, y, z) => {
+                            if (![x, y, z].every(Number.isFinite)) {
+                                throw new TypeError('setPlayerPose requires finite x, y and z values');
+                            }
+                            clearGameplayKeys();
+                            characterEntity.setPosition(x, y, z);
+                            lastSafePose.x = x;
+                            lastSafePose.y = y;
+                            lastSafePose.z = z;
+                            lastGroundY = y;
+                            cameraSmoothY = y + cameraEyeHeight;
+                            velocityY = 0;
+                            isGrounded = true;
+                            isJumping = false;
+                            updatePortalInteraction(x, y, z);
+                            return getMainRoomDebugState();
+                        }
+                    });
+                    window.__mainRoomDebug = mainRoomDebug;
+                    app.on('destroy', () => {
+                        if (window.__mainRoomDebug === mainRoomDebug) {
+                            delete window.__mainRoomDebug;
+                        }
+                    });
+                }
+
+                syncPointerLockPrompt();
+                document.getElementById('record-btn').style.display = devMode ? 'block' : 'none';
+                canvas.focus();
+                dreamController.start();
+
+                console.log('✅ 墨雨栖第一人称场景加载完成！');
+                console.log('📝 操作说明:');
+                console.log('  鼠标 - 环顾');
+                console.log('  WASD/方向键 - 移动');
+                console.log('  Shift 按住 - 奔跑');
+                console.log('  空格键 - 跳跃（可以跳到碰撞体上）');
+                console.log('  E - 靠近镜子时进入逐光温室');
+                console.log('  E - 靠近向日葵时进入倒置房间');
+                console.log('  1 - 切换碰撞网格可视化');
+                console.log('  2 - 切换高斯场景可视化');
+                console.log('  3 - 切换坐标轴可视化');
+                console.log('  4 - 切换角色碰撞体可视化');
+                console.log('  C - 开关碰撞检测');
+                console.log('  P - 显示调试面板');
+                console.log('  L - 锁定位置（悬浮）');
+                console.log('  Alt - 打开/关闭摆放面板');
+                console.log('  跳跃落下踩踏摆放物可消灭，并小幅反弹');
+                console.log('');
+                if (voxelCollision) {
+                    console.log('🧱 场景碰撞：PlayCanvas splat-transform 体素八叉树');
+                    console.log(`   ${voxelCollision.describe()}`);
+                    console.log(`   数据文件：${SCENE_CONFIG.voxelFile}`);
+                    console.log('   特性：连续扫掩碰撞（不穿墙）、网格外视为实心（不掉出世界）、无需手工对齐');
+                } else {
+                    console.warn('⚠️ 未加载体素碰撞，本场景没有场景碰撞！');
+                    console.warn('   请在项目根目录用 tools\\generate_room_collision.py 重建体素碰撞数据');
+                }
+                console.log(`   道具网格三角：${propCollisionTriangles.length}`);
+
+            } catch (err) {
+                loadingEl.classList.add('is-modal');
+                loadingEl.style.display = 'flex';
+                loadingEl.innerHTML = [
+                    '<div class="spinner"></div>',
+                    '<div id="loading-text">加载失败：' + String(err.message || '未知错误') + '</div>',
+                    '<button type="button" id="scene-retry" style="margin-top:18px;padding:10px 16px;border:1px solid rgba(255,255,255,.65);border-radius:6px;background:#f8f5ef;color:#151713;font:700 14px Microsoft YaHei,Arial;cursor:pointer">重新尝试</button>'
+                ].join('');
+                document.getElementById('scene-retry')?.addEventListener('click', () => {
+                    const retryUrl = new URL(window.location.href);
+                    retryUrl.searchParams.set('scene-retry', String(Date.now()));
+                    window.location.replace(retryUrl.href);
+                }, { once: true });
+                console.error('错误详情:', err);
+            }
+        })();
+    </script>
+</body>
+</html>
