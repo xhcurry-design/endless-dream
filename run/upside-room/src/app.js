@@ -4499,52 +4499,24 @@
         return tMax >= 0 && tMin <= 1;
     };
 
-    var UPSIDE_CHAIR_DOORWAY_MIN_X = -1.35;
-    var UPSIDE_CHAIR_DOORWAY_MAX_X = 0.78;
-    var UPSIDE_CHAIR_DOORWAY_MIN_Z = -0.42;
-    var UPSIDE_CHAIR_DOORWAY_MAX_Z = 1.02;
-
-    var isUpsideChairInDoorway = function (cameraPosition) {
-        return cameraPosition.x >= UPSIDE_CHAIR_DOORWAY_MIN_X &&
-            cameraPosition.x <= UPSIDE_CHAIR_DOORWAY_MAX_X &&
-            cameraPosition.z >= room.bounds.maxZ + UPSIDE_CHAIR_DOORWAY_MIN_Z &&
-            cameraPosition.z <= room.bounds.maxZ + UPSIDE_CHAIR_DOORWAY_MAX_Z;
-    };
-
     var canSeeUpsideChair = function (cameraPosition, targetPoint) {
-        var roomMargin = Math.min(player.radius || 0.18, 0.06);
-        var insideRoom = cameraPosition.x > room.bounds.minX + roomMargin &&
-            cameraPosition.x < room.bounds.maxX - roomMargin &&
-            cameraPosition.z > room.bounds.minZ + roomMargin &&
-            cameraPosition.z < room.bounds.maxZ - roomMargin;
-        var inDoorwayBand = isUpsideChairInDoorway(cameraPosition);
         var toTarget = targetPoint.clone().sub(cameraPosition);
         var distance = toTarget.length();
-
-        if (!insideRoom && !inDoorwayBand) {
-            return false;
-        }
-
-        if (inDoorwayBand) {
+        if (distance <= 0.0001) {
             return true;
         }
-
-        if (distance <= 2.2) {
-            toTarget.normalize();
-            if (camera.forward.clone().normalize().dot(toTarget) >= 0.88) {
-                return true;
-            }
-        }
+        var direction = toTarget.normalize();
+        var startPoint = cameraPosition.clone().add(direction.clone().mulScalar(0.08));
 
         if (isUpsideColliderBodyReady() &&
             app.systems.rigidbody &&
             typeof app.systems.rigidbody.raycastFirst === "function") {
-            var hit = app.systems.rigidbody.raycastFirst(cameraPosition, targetPoint);
+            var hit = app.systems.rigidbody.raycastFirst(startPoint, targetPoint);
             return !hit;
         }
 
         for (var obstacleIndex = 0; obstacleIndex < room.obstacles.length; obstacleIndex += 1) {
-            if (segmentIntersectsObstacle(cameraPosition, targetPoint, room.obstacles[obstacleIndex])) {
+            if (segmentIntersectsObstacle(startPoint, targetPoint, room.obstacles[obstacleIndex])) {
                 return false;
             }
         }
