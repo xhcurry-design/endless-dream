@@ -61047,6 +61047,7 @@ function bindEvents() {
         break;
       case "KeyI":
         if (puzzleState.mirrorMode) {
+          event.preventDefault();
           world.mirrorRig.rotation.x = THREE.MathUtils.clamp(
             world.mirrorRig.rotation.x + 0.04,
             MIRROR_MIN_PITCH,
@@ -61057,6 +61058,7 @@ function bindEvents() {
         break;
       case "KeyK":
         if (puzzleState.mirrorMode) {
+          event.preventDefault();
           world.mirrorRig.rotation.x = THREE.MathUtils.clamp(
             world.mirrorRig.rotation.x - 0.04,
             MIRROR_MIN_PITCH,
