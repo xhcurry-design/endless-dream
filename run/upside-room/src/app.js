@@ -4236,9 +4236,38 @@
         });
     };
 
+    var getUpsideChairDetectionPoints = function (fallbackPoint) {
+        var points = [];
+
+        if (room.nodes.shell) {
+            visitEntityTree(room.nodes.shell, function (node) {
+                var name = String(node.name || "").toLowerCase();
+                if (name.indexOf("chair") === -1) {
+                    return;
+                }
+
+                var bounds = getEntityWorldBounds(node);
+                if (!bounds) {
+                    return;
+                }
+
+                points.push(vec3(
+                    (bounds.minX + bounds.maxX) * 0.5,
+                    (bounds.minY + bounds.maxY) * 0.5,
+                    (bounds.minZ + bounds.maxZ) * 0.5
+                ));
+            });
+        }
+
+        return points.length ? points : [fallbackPoint.clone()];
+    };
+
     buildUpsideChairAnomaly = function (materials) {
         var chairRoot = createGroup("upside-chair", app.root);
         var chairPoint = room.layout && room.layout.anomalies ? room.layout.anomalies.chair.clone() : invertRoomPoint(vec3(0.18, 0.22, -0.18));
+        var chairDetectionPoints = getUpsideChairDetectionPoints(
+            chairPoint.clone().add(new pc.Vec3(0, -0.34, 0))
+        );
         chairRoot.setPosition(chairPoint.x, chairPoint.y, chairPoint.z);
 
         createPrimitive({
@@ -4329,7 +4358,8 @@
             id: "upside-chair",
             label: "逆眠木椅",
             description: "它倒扣在天花板的呼吸里，像一句家常话被黑暗悄悄改了结尾。",
-            point: chairPoint.clone().add(new pc.Vec3(0, -0.34, 0)),
+            point: chairDetectionPoints[0].clone(),
+            points: chairDetectionPoints,
             range: 5.6,
             threshold: 0.05,
             found: false,
@@ -4502,6 +4532,8 @@
     var canSeeUpsideChair = function (cameraPosition, targetPoint) {
         var samplePoints = [
             targetPoint.clone(),
+            targetPoint.clone().add(new pc.Vec3(0, 0.18, 0)),
+            targetPoint.clone().add(new pc.Vec3(0, -0.12, 0)),
             targetPoint.clone().add(new pc.Vec3(0, -0.16, 0)),
             targetPoint.clone().add(new pc.Vec3(0.18, -0.16, 0)),
             targetPoint.clone().add(new pc.Vec3(-0.18, -0.16, 0)),
@@ -4543,6 +4575,29 @@
         return false;
     };
 
+    var getVisibleUpsideChairTarget = function (cameraPosition, anomaly) {
+        var points = anomaly.points && anomaly.points.length ? anomaly.points : [anomaly.point];
+        var best = null;
+
+        for (var pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
+            var point = points[pointIndex];
+            var toPoint = point.clone().sub(cameraPosition);
+            var distance = toPoint.length();
+            if (distance > anomaly.range || !canSeeUpsideChair(cameraPosition, point)) {
+                continue;
+            }
+
+            if (!best || distance < best.distance) {
+                best = {
+                    point: point,
+                    distance: distance
+                };
+            }
+        }
+
+        return best;
+    };
+
     var updateAnomalyPrompt = function () {
         game.currentTarget = null;
 
@@ -4561,22 +4616,24 @@
                 continue;
             }
 
-            var toTarget = anomaly.point.clone().sub(cameraPosition);
-            var distance = toTarget.length();
-            if (distance > anomaly.range) {
-                continue;
-            }
-
-            if (anomaly.id === "upside-chair" && !canSeeUpsideChair(cameraPosition, anomaly.point)) {
-                continue;
-            }
-
             if (anomaly.id === "upside-chair") {
-                var chairScore = 1 - (distance * 0.02);
+                var chairTarget = getVisibleUpsideChairTarget(cameraPosition, anomaly);
+                if (!chairTarget) {
+                    continue;
+                }
+
+                var chairDistance = chairTarget.distance;
+                var chairScore = 1 - (chairDistance * 0.02);
                 if (chairScore > bestScore) {
                     bestScore = chairScore;
                     game.currentTarget = anomaly;
                 }
+                continue;
+            }
+
+            var toTarget = anomaly.point.clone().sub(cameraPosition);
+            var distance = toTarget.length();
+            if (distance > anomaly.range) {
                 continue;
             }
 
@@ -4689,24 +4746,25 @@
                 continue;
             }
 
-            var toTarget = anomaly.point.clone().sub(cameraPosition);
-            var distance = toTarget.length();
-            if (distance > anomaly.range) {
-                continue;
-            }
-
-            // The chair can be collected from the doorway when its line of sight is clear;
-            // it must not require the reticle to be centered on the object.
             if (anomaly.id === "upside-chair") {
-                if (!canSeeUpsideChair(cameraPosition, anomaly.point)) {
+                var chairTarget = getVisibleUpsideChairTarget(cameraPosition, anomaly);
+                if (!chairTarget) {
                     continue;
                 }
 
-                var chairScore = 1 - (distance * 0.02);
+                // The chair can be collected from the doorway when its line of sight is clear;
+                // it must not require the reticle to be centered on the object.
+                var chairScore = 1 - (chairTarget.distance * 0.02);
                 if (chairScore > bestScore) {
                     bestScore = chairScore;
                     game.currentTarget = anomaly;
                 }
+                continue;
+            }
+
+            var toTarget = anomaly.point.clone().sub(cameraPosition);
+            var distance = toTarget.length();
+            if (distance > anomaly.range) {
                 continue;
             }
 
