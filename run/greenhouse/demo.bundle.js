@@ -60818,9 +60818,9 @@ const CUTSCENE_TURN_DURATION = 1.65;
 const CUTSCENE_OPEN_DURATION = 2.5;
 const CUTSCENE_CAMERA_POSITION = new THREE.Vector3(0.35, 1.72, 2.2);
 const CUTSCENE_LOOK_TARGET = new THREE.Vector3(DOOR_CENTER_X, 1.95, roomBounds.minZ + 0.45);
-const ESSENTIAL_ASSET_TIMEOUT = 5000;
-const OPTIONAL_ASSET_TIMEOUT = 2600;
-const OPTIONAL_TEXTURE_TIMEOUT = 2200;
+const ESSENTIAL_ASSET_TIMEOUT = 15000;
+const OPTIONAL_ASSET_TIMEOUT = 12000;
+const OPTIONAL_TEXTURE_TIMEOUT = 10000;
 
 const roomContract = {
   dreamChainId: "mirror_greenhouse_chain",
@@ -60914,7 +60914,7 @@ async function init() {
   hideExitOverlay();
   bindEvents();
   assembleScene(createFallbackAssets());
-  loadingEl.hidden = true;
+  loadingEl.hidden = false;
   setStatus("别追影子，去追会停留的光。", 2800);
   animate();
   try {
@@ -60924,6 +60924,8 @@ async function init() {
     maybeApplyPendingAssetUpgrade();
   } catch (error) {
     console.error(error);
+  } finally {
+    loadingEl.hidden = true;
   }
 }
 
