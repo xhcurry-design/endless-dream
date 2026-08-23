@@ -40,7 +40,7 @@
         }
         window.clearTimeout(startupWatchdog);
         var script = document.createElement("script");
-        script.src = "./src/app.js?v=20260823-3";
+        script.src = "./src/app.js?v=20260823-4";
         script.onerror = function () {
             fail(new Error("应用脚本加载失败。"));
         };
