@@ -281,10 +281,10 @@ body {
 }
 
 .fade-overlay__message {
-    max-width: min(1180px, calc(100vw - 32px));
+    max-width: min(1400px, calc(100vw - 32px));
     color: #050505;
     text-align: center;
-    font-size: clamp(22px, 3.5vw, 46px);
+    font-size: clamp(22px, 3.5vw, 42px);
     font-weight: 700;
     line-height: 1.55;
     letter-spacing: 0;

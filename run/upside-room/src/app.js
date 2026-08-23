@@ -4330,7 +4330,7 @@
             label: "逆眠木椅",
             description: "它倒扣在天花板的呼吸里，像一句家常话被黑暗悄悄改了结尾。",
             point: chairPoint.clone().add(new pc.Vec3(0, -0.34, 0)),
-            range: 1.9,
+            range: 1.35,
             threshold: 0.958,
             found: false,
             entity: chairRoot,
