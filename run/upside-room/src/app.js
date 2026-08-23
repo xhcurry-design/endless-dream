@@ -4463,6 +4463,73 @@
         }
     };
 
+    var segmentIntersectsObstacle = function (start, end, box) {
+        var dx = end.x - start.x;
+        var dz = end.z - start.z;
+        var tMin = 0;
+        var tMax = 1;
+        var axes = [
+            { origin: start.x, direction: dx, min: box.minX, max: box.maxX },
+            { origin: start.z, direction: dz, min: box.minZ, max: box.maxZ }
+        ];
+
+        for (var axisIndex = 0; axisIndex < axes.length; axisIndex += 1) {
+            var axis = axes[axisIndex];
+            if (Math.abs(axis.direction) < 0.000001) {
+                if (axis.origin < axis.min || axis.origin > axis.max) {
+                    return false;
+                }
+                continue;
+            }
+
+            var axisStart = (axis.min - axis.origin) / axis.direction;
+            var axisEnd = (axis.max - axis.origin) / axis.direction;
+            if (axisStart > axisEnd) {
+                var swapped = axisStart;
+                axisStart = axisEnd;
+                axisEnd = swapped;
+            }
+            tMin = Math.max(tMin, axisStart);
+            tMax = Math.min(tMax, axisEnd);
+            if (tMin > tMax) {
+                return false;
+            }
+        }
+
+        return tMax >= 0 && tMin <= 1;
+    };
+
+    var canSeeUpsideChair = function (cameraPosition, targetPoint) {
+        var roomMargin = player.radius || 0.18;
+        if (cameraPosition.x <= room.bounds.minX + roomMargin ||
+            cameraPosition.x >= room.bounds.maxX - roomMargin ||
+            cameraPosition.z <= room.bounds.minZ + roomMargin ||
+            cameraPosition.z >= room.bounds.maxZ - roomMargin) {
+            return false;
+        }
+
+        if (isUpsideColliderBodyReady() &&
+            app.systems.rigidbody &&
+            typeof app.systems.rigidbody.raycastFirst === "function") {
+            var hit = app.systems.rigidbody.raycastFirst(
+                cameraPosition,
+                targetPoint,
+                {
+                    filterCollisionGroup: 1,
+                    filterCollisionMask: 1
+                }
+            );
+            return !hit;
+        }
+
+        for (var obstacleIndex = 0; obstacleIndex < room.obstacles.length; obstacleIndex += 1) {
+            if (segmentIntersectsObstacle(cameraPosition, targetPoint, room.obstacles[obstacleIndex])) {
+                return false;
+            }
+        }
+        return true;
+    };
+
     var updateAnomalyPrompt = function () {
         game.currentTarget = null;
 
@@ -4478,6 +4545,10 @@
         for (var i = 0; i < game.anomalies.length; i += 1) {
             var anomaly = game.anomalies[i];
             if (anomaly.found || !anomaly.entity.enabled) {
+                continue;
+            }
+
+            if (anomaly.id === "upside-chair" && !canSeeUpsideChair(cameraPosition, anomaly.point)) {
                 continue;
             }
 
@@ -4593,6 +4664,10 @@
         for (var i = 0; i < game.anomalies.length; i += 1) {
             var anomaly = game.anomalies[i];
             if (anomaly.found || !anomaly.entity.enabled) {
+                continue;
+            }
+
+            if (anomaly.id === "upside-chair" && !canSeeUpsideChair(cameraPosition, anomaly.point)) {
                 continue;
             }
 

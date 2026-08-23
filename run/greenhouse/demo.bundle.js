@@ -61897,12 +61897,12 @@ function addDoorVines(vineTextures, doorWidth, doorHeight) {
       curtain: {
         file: "JungleVine_04.png",
         width: 0.78,
-        height: 0.44,
+        height: 0.52,
         x: 0.02,
-        y: -0.3,
+        y: -0.26,
         z: 0.058,
         rotationZ: 0.19,
-        opacity: 0.76,
+        opacity: 0.9,
       },
       stems: [
         [
@@ -61918,9 +61918,9 @@ function addDoorVines(vineTextures, doorWidth, doorHeight) {
         ],
       ],
       leaves: [
-        { x: -0.25, y: -0.29, z: 0.096, width: 0.09, height: 0.052, rotationZ: -0.55 },
-        { x: 0.03, y: -0.28, z: 0.098, width: 0.1, height: 0.055, rotationZ: 0.55 },
-        { x: 0.25, y: -0.36, z: 0.096, width: 0.092, height: 0.052, rotationZ: -0.72 },
+        { x: -0.25, y: -0.25, z: 0.096, width: 0.105, height: 0.06, rotationZ: -0.55 },
+        { x: 0.03, y: -0.24, z: 0.098, width: 0.115, height: 0.064, rotationZ: 0.55 },
+        { x: 0.25, y: -0.32, z: 0.096, width: 0.108, height: 0.06, rotationZ: -0.72 },
       ],
       releaseX: 0.14 * doorWidth,
       releaseY: 0.18,
