@@ -4330,8 +4330,8 @@
             label: "逆眠木椅",
             description: "它倒扣在天花板的呼吸里，像一句家常话被黑暗悄悄改了结尾。",
             point: chairPoint.clone().add(new pc.Vec3(0, -0.34, 0)),
-            range: 2.6,
-            threshold: 0.9,
+            range: 5.6,
+            threshold: 0.05,
             found: false,
             entity: chairRoot,
             message: "逆眠木椅像被纠正的梦，慢慢贴回了夜色里。"
@@ -4500,27 +4500,47 @@
     };
 
     var canSeeUpsideChair = function (cameraPosition, targetPoint) {
-        var toTarget = targetPoint.clone().sub(cameraPosition);
-        var distance = toTarget.length();
-        if (distance <= 0.0001) {
-            return true;
-        }
-        var direction = toTarget.normalize();
-        var startPoint = cameraPosition.clone().add(direction.clone().mulScalar(0.08));
+        var samplePoints = [
+            targetPoint.clone(),
+            targetPoint.clone().add(new pc.Vec3(0, -0.16, 0)),
+            targetPoint.clone().add(new pc.Vec3(0.18, -0.16, 0)),
+            targetPoint.clone().add(new pc.Vec3(-0.18, -0.16, 0)),
+            targetPoint.clone().add(new pc.Vec3(0, -0.36, 0.14))
+        ];
 
-        if (isUpsideColliderBodyReady() &&
-            app.systems.rigidbody &&
-            typeof app.systems.rigidbody.raycastFirst === "function") {
-            var hit = app.systems.rigidbody.raycastFirst(startPoint, targetPoint);
-            return !hit;
-        }
+        for (var sampleIndex = 0; sampleIndex < samplePoints.length; sampleIndex += 1) {
+            var samplePoint = samplePoints[sampleIndex];
+            var toTarget = samplePoint.clone().sub(cameraPosition);
+            if (toTarget.length() <= 0.0001) {
+                return true;
+            }
 
-        for (var obstacleIndex = 0; obstacleIndex < room.obstacles.length; obstacleIndex += 1) {
-            if (segmentIntersectsObstacle(startPoint, targetPoint, room.obstacles[obstacleIndex])) {
-                return false;
+            var direction = toTarget.normalize();
+            var startPoint = cameraPosition.clone().add(direction.clone().mulScalar(0.08));
+
+            if (isUpsideColliderBodyReady() &&
+                app.systems.rigidbody &&
+                typeof app.systems.rigidbody.raycastFirst === "function") {
+                var hit = app.systems.rigidbody.raycastFirst(startPoint, samplePoint);
+                if (!hit) {
+                    return true;
+                }
+                continue;
+            }
+
+            var blocked = false;
+            for (var obstacleIndex = 0; obstacleIndex < room.obstacles.length; obstacleIndex += 1) {
+                if (segmentIntersectsObstacle(startPoint, samplePoint, room.obstacles[obstacleIndex])) {
+                    blocked = true;
+                    break;
+                }
+            }
+            if (!blocked) {
+                return true;
             }
         }
-        return true;
+
+        return false;
     };
 
     var updateAnomalyPrompt = function () {
@@ -4541,13 +4561,22 @@
                 continue;
             }
 
+            var toTarget = anomaly.point.clone().sub(cameraPosition);
+            var distance = toTarget.length();
+            if (distance > anomaly.range) {
+                continue;
+            }
+
             if (anomaly.id === "upside-chair" && !canSeeUpsideChair(cameraPosition, anomaly.point)) {
                 continue;
             }
 
-            var toTarget = anomaly.point.clone().sub(cameraPosition);
-            var distance = toTarget.length();
-            if (distance > anomaly.range) {
+            if (anomaly.id === "upside-chair") {
+                var chairScore = 1 - (distance * 0.02);
+                if (chairScore > bestScore) {
+                    bestScore = chairScore;
+                    game.currentTarget = anomaly;
+                }
                 continue;
             }
 
