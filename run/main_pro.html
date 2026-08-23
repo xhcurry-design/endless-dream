@@ -785,7 +785,11 @@
                 loading.classList.remove('is-modal');
                 loading.style.display = 'block';
                 if (requestPointerLock) {
-                    document.getElementById('application-canvas')?.requestPointerLock?.();
+                    try {
+                        document.getElementById('application-canvas')?.requestPointerLock?.();
+                    } catch (error) {
+                        console.warn('忽略启动时的指针锁定失败：', error);
+                    }
                 }
                 const launchConfig = resumeFromGreenhouse
                     ? {
@@ -3023,7 +3027,11 @@
                 
                 canvas.addEventListener('mousedown', () => {
                     if (isGameplayInputLocked()) return;
-                    canvas.requestPointerLock?.();
+                    try {
+                        canvas.requestPointerLock?.();
+                    } catch (error) {
+                        console.warn('忽略鼠标按下时的指针锁定失败：', error);
+                    }
                 });
 
                 window.addEventListener('blur', () => {
