@@ -4546,10 +4546,10 @@
             return null;
         }
 
-        var targetPoint = vec3(
-            (bounds.minX + bounds.maxX) * 0.5,
-            (bounds.minY + bounds.maxY) * 0.5,
-            (bounds.minZ + bounds.maxZ) * 0.5
+        // Check visibility to the surface the reticle actually enters, rather than
+        // the object's center, which can sit behind a nearby door frame or wall.
+        var targetPoint = cameraPosition.clone().add(
+            forward.clone().mulScalar(hitDistance + 0.04)
         );
         var rayStart = cameraPosition.clone().add(forward.clone().mulScalar(0.08));
 
