@@ -108,9 +108,10 @@
         var ambient = null;
         var music = null;
         var started = false;
+        var musicPaused = false;
         var muted = isMuted();
         var MUSIC_URL = new URL(
-            "../obj_wo3DlMOGwrbDjj7DisKw_58087338372_f23f_7d7e_eebb_b0385c1cb0bfc322ddd42d68d06b4fb9.mp3?v=20260824-bgm-3",
+            "../obj_wo3DlMOGwrbDjj7DisKw_58087338372_f23f_7d7e_eebb_b0385c1cb0bfc322ddd42d68d06b4fb9.mp3?v=20260824-music-toggle-1",
             (document.currentScript && document.currentScript.src) || window.location.href
         ).href;
         var MUSIC_VOLUME = 0.24;
@@ -192,7 +193,9 @@
                     started = true;
                     createRain();
                 }
-                startMusic();
+                if (!musicPaused) {
+                    startMusic();
+                }
                 setGain();
                 return true;
             }).catch(function () {
@@ -241,10 +244,31 @@
             return muted;
         }
 
+        function toggleMusic() {
+            musicPaused = !musicPaused;
+            if (musicPaused) {
+                if (music) music.pause();
+            } else {
+                startMusic();
+            }
+            return musicPaused;
+        }
+
+        function stopMusic() {
+            musicPaused = true;
+            if (music) {
+                music.pause();
+                try { music.currentTime = 0; } catch (_) {}
+            }
+        }
+
         return {
             prime: prime,
             play: play,
             toggle: toggle,
+            toggleMusic: toggleMusic,
+            stopMusic: stopMusic,
+            isMusicPaused: function () { return musicPaused; },
             isMuted: function () { return muted; }
         };
     }());
@@ -255,16 +279,16 @@
         soundButton.dataset.bound = "true";
 
         function sync() {
-            var muted = soundscape.isMuted();
-            soundButton.classList.toggle("is-muted", muted);
-            soundButton.setAttribute("aria-label", muted ? "开启声音" : "关闭声音");
-            soundButton.title = muted ? "开启声音" : "关闭声音";
+            var paused = soundscape.isMusicPaused();
+            soundButton.classList.toggle("is-muted", paused);
+            soundButton.setAttribute("aria-label", paused ? "继续音乐" : "暂停音乐");
+            soundButton.title = paused ? "继续音乐" : "暂停音乐";
         }
 
         soundButton.addEventListener("click", function (event) {
             event.stopPropagation();
             soundscape.prime().then(function () {
-                soundscape.toggle();
+                soundscape.toggleMusic();
                 sync();
             });
         });
@@ -993,6 +1017,7 @@
             mode = "victory";
             inputLocked = true;
             lookLimited = true;
+            soundscape.stopMusic();
             transition.classList.remove("is-active");
             if (victoryTime) {
                 var startedAt = state.startedAt || Date.now();
@@ -1103,6 +1128,7 @@
         saveState: saveState,
         clearState: clearState,
         primeAudio: soundscape.prime,
+        stopMusic: soundscape.stopMusic,
         bindStaticUi: bindStaticUi,
         createController: createController
     });

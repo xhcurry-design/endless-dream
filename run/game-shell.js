@@ -98,15 +98,27 @@
     var pauseReasons = new Set();
     var roomMusic = null;
     var roomMusicStarted = false;
+    var roomMusicPaused = false;
+    var roomMusicButton = null;
     var MUSIC_MUTED_KEY = "moyuqi.soundMuted.v1";
     var MUSIC_VOLUME = 0.24;
 
+    function syncRoomMusicButton() {
+        if (!roomMusicButton) return;
+        var label = roomMusicPaused ? "继续音乐" : "暂停音乐";
+        roomMusicButton.classList.toggle("is-muted", roomMusicPaused);
+        roomMusicButton.setAttribute("aria-label", label);
+        roomMusicButton.title = label;
+        roomMusicButton.innerHTML = (roomMusicPaused ? ICONS.musicOff : ICONS.music) + '<span class="dream-game-tool__label"></span>';
+        roomMusicButton.querySelector("span").textContent = label;
+    }
+
     function startRoomMusic() {
-        if (pageRoomId === "main" || roomMusicStarted) return;
+        if (pageRoomId === "main" || roomMusicStarted || roomMusicPaused) return;
         roomMusicStarted = true;
         try {
             var muted = window.localStorage.getItem(MUSIC_MUTED_KEY) === "true";
-            roomMusic = new Audio(new URL("../../obj_wo3DlMOGwrbDjj7DisKw_58087338372_f23f_7d7e_eebb_b0385c1cb0bfc322ddd42d68d06b4fb9.mp3?v=20260824-bgm-3", window.location.href).href);
+            roomMusic = new Audio(new URL("../../obj_wo3DlMOGwrbDjj7DisKw_58087338372_f23f_7d7e_eebb_b0385c1cb0bfc322ddd42d68d06b4fb9.mp3?v=20260824-music-toggle-1", window.location.href).href);
             roomMusic.loop = true;
             roomMusic.preload = "auto";
             roomMusic.volume = MUSIC_VOLUME;
@@ -122,8 +134,27 @@
         }
     }
 
-    document.addEventListener("pointerdown", startRoomMusic, { once: true });
-    document.addEventListener("keydown", startRoomMusic, { once: true });
+    function stopRoomMusic() {
+        if (roomMusic) {
+            roomMusic.pause();
+            try { roomMusic.currentTime = 0; } catch (_) {}
+        }
+        roomMusicStarted = false;
+    }
+
+    function toggleRoomMusic() {
+        roomMusicPaused = !roomMusicPaused;
+        if (roomMusicPaused) {
+            if (roomMusic) roomMusic.pause();
+        } else {
+            startRoomMusic();
+            if (roomMusic) {
+                var playing = roomMusic.play();
+                if (playing && typeof playing.catch === "function") playing.catch(function () {});
+            }
+        }
+        syncRoomMusicButton();
+    }
 
     function createElement(tagName, className, textContent) {
         var element = document.createElement(tagName);
@@ -142,7 +173,9 @@
         pause: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="4" width="4" height="16" rx="1"></rect><rect x="14" y="4" width="4" height="16" rx="1"></rect></svg>',
         restart: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path></svg>',
         close: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"></path></svg>',
-        play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"></path></svg>'
+        play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"></path></svg>',
+        music: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>',
+        musicOff: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5 6 9H2v6h4l5 4V5z"></path><path d="m15 9 6 6M21 9l-6 6"></path></svg>'
     };
 
     function iconButton(kind, label, modifier) {
@@ -163,6 +196,19 @@
     var pauseButton = iconButton("pause", "暂停游戏");
     var restartButton = iconButton("restart", "重新开始", "dream-game-tool--danger");
     toolbar.append(controlsButton, guideButton, pauseButton, restartButton);
+
+    if (pageRoomId !== "main") {
+        roomMusicButton = iconButton("music", "暂停音乐", "dream-music-toggle");
+        roomMusicButton.addEventListener("click", function (event) {
+            event.stopPropagation();
+            toggleRoomMusic();
+        });
+        body.appendChild(roomMusicButton);
+        syncRoomMusicButton();
+        startRoomMusic();
+        document.addEventListener("pointerdown", startRoomMusic);
+        document.addEventListener("keydown", startRoomMusic);
+    }
 
     var modal = createElement("div", "dream-game-modal");
     modal.hidden = true;
@@ -372,6 +418,7 @@
         }
 
         releasePointerLock();
+        stopRoomMusic();
         if (pageRoomId === "main") {
             try {
                 if (window.EndlessDream && typeof window.EndlessDream.clearState === "function") {
@@ -504,6 +551,7 @@
 
     window.addEventListener("pagehide", function () {
         pauseReasons.clear();
+        stopRoomMusic();
     });
 
     window.EndlessDreamGameShell = Object.freeze({

@@ -429,7 +429,7 @@
             }
         }
     </style>
-    <link rel="stylesheet" href="run/dream-theme.css?v=20260821-2">
+    <link rel="stylesheet" href="run/dream-theme.css?v=20260824-music-toggle-1">
 </head>
 <body data-dream-room="main">
     <div id="entry-screen" aria-labelledby="entry-title">
@@ -457,14 +457,15 @@
             </div>
         </div>
         <p class="entry-dedication">将此游戏献给每一个困在自己梦里的人</p>
-        <button type="button" class="entry-sound" id="entry-sound" aria-label="关闭声音" title="关闭声音">
+        
+    </div>
+    <button type="button" class="entry-sound" id="entry-sound" aria-label="暂停音乐" title="暂停音乐">
             <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M11 5 6 9H2v6h4l5 4V5z"></path>
                 <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
                 <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
             </svg>
-        </button>
-    </div>
+    </button>
 
     <!-- 墨雨栖第一人称游戏画面 -->
     <canvas id="application-canvas" tabindex="0" aria-label="墨雨栖第一人称游戏画面"></canvas>
@@ -657,8 +658,8 @@
         }
     </script>
 
-    <script src="run/game-shell.js?v=20260824-bgm-3"></script>
-    <script src="run/dream-flow.js?v=20260824-bgm-3"></script>
+    <script src="run/game-shell.js?v=20260824-music-toggle-1"></script>
+    <script src="run/dream-flow.js?v=20260824-music-toggle-1"></script>
     <script type="module">
         const RUN_STATE_KEY = window.EndlessDream.STATE_KEY;
         const launchParams = new URLSearchParams(window.location.search);
