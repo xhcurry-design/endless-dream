@@ -4236,38 +4236,9 @@
         });
     };
 
-    var getUpsideChairDetectionPoints = function (fallbackPoint) {
-        var points = [];
-
-        if (room.nodes.shell) {
-            visitEntityTree(room.nodes.shell, function (node) {
-                var name = String(node.name || "").toLowerCase();
-                if (name.indexOf("chair") === -1) {
-                    return;
-                }
-
-                var bounds = getEntityWorldBounds(node);
-                if (!bounds) {
-                    return;
-                }
-
-                points.push(vec3(
-                    (bounds.minX + bounds.maxX) * 0.5,
-                    (bounds.minY + bounds.maxY) * 0.5,
-                    (bounds.minZ + bounds.maxZ) * 0.5
-                ));
-            });
-        }
-
-        return points.length ? points : [fallbackPoint.clone()];
-    };
-
     buildUpsideChairAnomaly = function (materials) {
         var chairRoot = createGroup("upside-chair", app.root);
         var chairPoint = room.layout && room.layout.anomalies ? room.layout.anomalies.chair.clone() : invertRoomPoint(vec3(0.18, 0.22, -0.18));
-        var chairDetectionPoints = getUpsideChairDetectionPoints(
-            chairPoint.clone().add(new pc.Vec3(0, -0.34, 0))
-        );
         chairRoot.setPosition(chairPoint.x, chairPoint.y, chairPoint.z);
 
         createPrimitive({
@@ -4358,8 +4329,7 @@
             id: "upside-chair",
             label: "逆眠木椅",
             description: "它倒扣在天花板的呼吸里，像一句家常话被黑暗悄悄改了结尾。",
-            point: chairDetectionPoints[0].clone(),
-            points: chairDetectionPoints,
+            point: chairPoint.clone().add(new pc.Vec3(0, -0.34, 0)),
             range: 5.6,
             threshold: 0.05,
             found: false,
@@ -4529,73 +4499,75 @@
         return tMax >= 0 && tMin <= 1;
     };
 
-    var canSeeUpsideChair = function (cameraPosition, targetPoint) {
-        var samplePoints = [
-            targetPoint.clone(),
-            targetPoint.clone().add(new pc.Vec3(0, 0.18, 0)),
-            targetPoint.clone().add(new pc.Vec3(0, -0.12, 0)),
-            targetPoint.clone().add(new pc.Vec3(0, -0.16, 0)),
-            targetPoint.clone().add(new pc.Vec3(0.18, -0.16, 0)),
-            targetPoint.clone().add(new pc.Vec3(-0.18, -0.16, 0)),
-            targetPoint.clone().add(new pc.Vec3(0, -0.36, 0.14))
+    var rayIntersectsBounds = function (origin, direction, bounds) {
+        var tMin = 0;
+        var tMax = Infinity;
+        var axes = [
+            { origin: origin.x, direction: direction.x, min: bounds.minX, max: bounds.maxX },
+            { origin: origin.y, direction: direction.y, min: bounds.minY, max: bounds.maxY },
+            { origin: origin.z, direction: direction.z, min: bounds.minZ, max: bounds.maxZ }
         ];
 
-        for (var sampleIndex = 0; sampleIndex < samplePoints.length; sampleIndex += 1) {
-            var samplePoint = samplePoints[sampleIndex];
-            var toTarget = samplePoint.clone().sub(cameraPosition);
-            if (toTarget.length() <= 0.0001) {
-                return true;
-            }
-
-            var direction = toTarget.normalize();
-            var startPoint = cameraPosition.clone().add(direction.clone().mulScalar(0.08));
-
-            if (isUpsideColliderBodyReady() &&
-                app.systems.rigidbody &&
-                typeof app.systems.rigidbody.raycastFirst === "function") {
-                var hit = app.systems.rigidbody.raycastFirst(startPoint, samplePoint);
-                if (!hit) {
-                    return true;
+        for (var axisIndex = 0; axisIndex < axes.length; axisIndex += 1) {
+            var axis = axes[axisIndex];
+            if (Math.abs(axis.direction) < 0.000001) {
+                if (axis.origin < axis.min || axis.origin > axis.max) {
+                    return null;
                 }
                 continue;
             }
 
-            var blocked = false;
-            for (var obstacleIndex = 0; obstacleIndex < room.obstacles.length; obstacleIndex += 1) {
-                if (segmentIntersectsObstacle(startPoint, samplePoint, room.obstacles[obstacleIndex])) {
-                    blocked = true;
-                    break;
-                }
+            var near = (axis.min - axis.origin) / axis.direction;
+            var far = (axis.max - axis.origin) / axis.direction;
+            if (near > far) {
+                var swapped = near;
+                near = far;
+                far = swapped;
             }
-            if (!blocked) {
-                return true;
+
+            tMin = Math.max(tMin, near);
+            tMax = Math.min(tMax, far);
+            if (tMin > tMax) {
+                return null;
             }
         }
 
-        return false;
+        return tMax >= 0 ? tMin : null;
     };
 
-    var getVisibleUpsideChairTarget = function (cameraPosition, anomaly) {
-        var points = anomaly.points && anomaly.points.length ? anomaly.points : [anomaly.point];
-        var best = null;
+    var getAnomalyRayHitDistance = function (cameraPosition, forward, anomaly) {
+        var bounds = getEntityWorldBounds(anomaly.entity);
+        if (!bounds) {
+            return null;
+        }
 
-        for (var pointIndex = 0; pointIndex < points.length; pointIndex += 1) {
-            var point = points[pointIndex];
-            var toPoint = point.clone().sub(cameraPosition);
-            var distance = toPoint.length();
-            if (distance > anomaly.range || !canSeeUpsideChair(cameraPosition, point)) {
-                continue;
+        var hitDistance = rayIntersectsBounds(cameraPosition, forward, bounds);
+        if (hitDistance === null || hitDistance > anomaly.range) {
+            return null;
+        }
+
+        var targetPoint = vec3(
+            (bounds.minX + bounds.maxX) * 0.5,
+            (bounds.minY + bounds.maxY) * 0.5,
+            (bounds.minZ + bounds.maxZ) * 0.5
+        );
+        var rayStart = cameraPosition.clone().add(forward.clone().mulScalar(0.08));
+
+        if (isUpsideColliderBodyReady() &&
+            app.systems.rigidbody &&
+            typeof app.systems.rigidbody.raycastFirst === "function") {
+            if (app.systems.rigidbody.raycastFirst(rayStart, targetPoint)) {
+                return null;
             }
-
-            if (!best || distance < best.distance) {
-                best = {
-                    point: point,
-                    distance: distance
-                };
+        } else {
+            for (var obstacleIndex = 0; obstacleIndex < room.obstacles.length; obstacleIndex += 1) {
+                if (segmentIntersectsObstacle(rayStart, targetPoint, room.obstacles[obstacleIndex])) {
+                    return null;
+                }
             }
         }
 
-        return best;
+        return hitDistance;
     };
 
     var updateAnomalyPrompt = function () {
@@ -4616,34 +4588,12 @@
                 continue;
             }
 
-            if (anomaly.id === "upside-chair") {
-                var chairTarget = getVisibleUpsideChairTarget(cameraPosition, anomaly);
-                if (!chairTarget) {
-                    continue;
-                }
-
-                var chairDistance = chairTarget.distance;
-                var chairScore = 1 - (chairDistance * 0.02);
-                if (chairScore > bestScore) {
-                    bestScore = chairScore;
-                    game.currentTarget = anomaly;
-                }
+            var hitDistance = getAnomalyRayHitDistance(cameraPosition, forward, anomaly);
+            if (hitDistance === null) {
                 continue;
             }
 
-            var toTarget = anomaly.point.clone().sub(cameraPosition);
-            var distance = toTarget.length();
-            if (distance > anomaly.range) {
-                continue;
-            }
-
-            toTarget.normalize();
-            var alignment = forward.dot(toTarget);
-            if (alignment < anomaly.threshold) {
-                continue;
-            }
-
-            var score = alignment - (distance * 0.02);
+            var score = 1 - (hitDistance * 0.02);
             if (score > bestScore) {
                 bestScore = score;
                 game.currentTarget = anomaly;
@@ -4746,35 +4696,12 @@
                 continue;
             }
 
-            if (anomaly.id === "upside-chair") {
-                var chairTarget = getVisibleUpsideChairTarget(cameraPosition, anomaly);
-                if (!chairTarget) {
-                    continue;
-                }
-
-                // The chair can be collected from the doorway when its line of sight is clear;
-                // it must not require the reticle to be centered on the object.
-                var chairScore = 1 - (chairTarget.distance * 0.02);
-                if (chairScore > bestScore) {
-                    bestScore = chairScore;
-                    game.currentTarget = anomaly;
-                }
+            var hitDistance = getAnomalyRayHitDistance(cameraPosition, forward, anomaly);
+            if (hitDistance === null) {
                 continue;
             }
 
-            var toTarget = anomaly.point.clone().sub(cameraPosition);
-            var distance = toTarget.length();
-            if (distance > anomaly.range) {
-                continue;
-            }
-
-            toTarget.normalize();
-            var alignment = forward.dot(toTarget);
-            if (alignment < anomaly.threshold) {
-                continue;
-            }
-
-            var score = alignment - (distance * 0.02);
+            var score = 1 - (hitDistance * 0.02);
             if (score > bestScore) {
                 bestScore = score;
                 game.currentTarget = anomaly;
