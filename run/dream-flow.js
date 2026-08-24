@@ -110,7 +110,7 @@
         var started = false;
         var muted = isMuted();
         var MUSIC_URL = new URL(
-            "assets/obj_wo3DlMOGwrbDjj7DisKw_58087338372_f23f_7d7e_eebb_b0385c1cb0bfc322ddd42d68d06b4fb9.mp3?v=20260824-bgm-2",
+            "../obj_wo3DlMOGwrbDjj7DisKw_58087338372_f23f_7d7e_eebb_b0385c1cb0bfc322ddd42d68d06b4fb9.mp3?v=20260824-bgm-3",
             (document.currentScript && document.currentScript.src) || window.location.href
         ).href;
         var MUSIC_VOLUME = 0.24;
