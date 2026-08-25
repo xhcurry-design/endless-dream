@@ -60643,6 +60643,10 @@ window.addEventListener("error", (event) => {
 window.addEventListener("unhandledrejection", (event) => {
   const reason =
     event.reason instanceof Error ? event.reason : new Error(String(event.reason));
+  if (/message channel closed|asynchronous response/i.test(reason.message)) {
+    console.warn("[mirror-room] ignored browser extension rejection:", reason);
+    return;
+  }
   showFatalError(reason, "异步流程");
 });
 
@@ -60821,6 +60825,12 @@ const CUTSCENE_LOOK_TARGET = new THREE.Vector3(DOOR_CENTER_X, 1.95, roomBounds.m
 const ESSENTIAL_ASSET_TIMEOUT = 60000;
 const OPTIONAL_ASSET_TIMEOUT = 45000;
 const OPTIONAL_TEXTURE_TIMEOUT = 30000;
+const GREENHOUSE_ASSET_BASE =
+  "https://raw.githubusercontent.com/xhcurry-design/endless-dream/gh-pages/run/greenhouse/assets/";
+const GREENHOUSE_ASSET_VERSION = "20260825-greenhouse-assets-3";
+const MAX_CONCURRENT_ASSET_LOADS = 3;
+const assetLoadQueue = [];
+let activeAssetLoads = 0;
 
 const roomContract = {
   dreamChainId: "mirror_greenhouse_chain",
@@ -60914,7 +60924,9 @@ async function init() {
   hideExitOverlay();
   bindEvents();
   assembleScene(createFallbackAssets());
-  loadingEl.hidden = false;
+  // The procedural room is fully playable. Remote models upgrade it in the
+  // background, so a slow decorative asset never blocks entry to the puzzle.
+  loadingEl.hidden = true;
   setStatus("别追影子，去追会停留的光。", 2800);
   animate();
   try {
@@ -60924,8 +60936,6 @@ async function init() {
     maybeApplyPendingAssetUpgrade();
   } catch (error) {
     console.error(error);
-  } finally {
-    loadingEl.hidden = true;
   }
 }
 
@@ -61150,54 +61160,99 @@ async function loadAssets() {
   };
 }
 
-function loadModel(url) {
-  if (!loader) {
-    return Promise.reject(new Error("GLTFLoader not ready"));
+function resolveGreenhouseAssetUrl(url) {
+  const file = url.replace(/^\.\/assets\//, "");
+  const resolved = new URL(file, GREENHOUSE_ASSET_BASE);
+  resolved.searchParams.set("v", GREENHOUSE_ASSET_VERSION);
+  return resolved.href;
+}
+
+function scheduleAssetLoad(task) {
+  return new Promise((resolve, reject) => {
+    assetLoadQueue.push({ task, resolve, reject });
+    pumpAssetLoadQueue();
+  });
+}
+
+function pumpAssetLoadQueue() {
+  while (
+    activeAssetLoads < MAX_CONCURRENT_ASSET_LOADS &&
+    assetLoadQueue.length > 0
+  ) {
+    const entry = assetLoadQueue.shift();
+    activeAssetLoads += 1;
+    Promise.resolve()
+      .then(entry.task)
+      .then(entry.resolve, entry.reject)
+      .finally(() => {
+        activeAssetLoads -= 1;
+        pumpAssetLoadQueue();
+      });
   }
+}
+
+async function fetchAssetPayload(url, timeoutMs, responseType) {
+  const controller = new AbortController();
+  const timer = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      cache: "force-cache",
+      mode: "cors",
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`${url} 返回 ${response.status}`);
+    }
+    if (responseType === "text") {
+      return await response.text();
+    }
+    if (responseType === "blob") {
+      return await response.blob();
+    }
+    return await response.arrayBuffer();
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      throw new Error(`${url} 加载超时`);
+    }
+    throw error;
+  } finally {
+    window.clearTimeout(timer);
+  }
+}
+
+async function loadModel(url, timeoutMs) {
+  if (!loader) {
+    throw new Error("GLTFLoader not ready");
+  }
+  const assetUrl = resolveGreenhouseAssetUrl(url);
+  const isJsonGltf = /\.gltf(?:\?|$)/i.test(assetUrl);
+  const payload = await fetchAssetPayload(
+    assetUrl,
+    timeoutMs,
+    isJsonGltf ? "text" : "arrayBuffer"
+  );
+  const resourcePath = assetUrl.slice(0, assetUrl.lastIndexOf("/") + 1);
   return new Promise((resolve, reject) => {
-    loader.load(url, resolve, undefined, reject);
+    loader.parse(payload, resourcePath, resolve, reject);
   });
 }
 
-function loadTexture(url) {
-  return new Promise((resolve, reject) => {
-    textureLoader.load(
-      url,
-      (texture) => {
-        texture.colorSpace = THREE.SRGBColorSpace;
-        texture.anisotropy = renderer
-          ? renderer.capabilities.getMaxAnisotropy()
-          : 1;
-        resolve(texture);
-      },
-      undefined,
-      reject
-    );
-  });
-}
-
-function withTimeout(promise, timeoutMs, label) {
-  return new Promise((resolve, reject) => {
-    const timer = window.setTimeout(() => {
-      reject(new Error(label + " 加载超时"));
-    }, timeoutMs);
-
-    promise.then(
-      (value) => {
-        window.clearTimeout(timer);
-        resolve(value);
-      },
-      (error) => {
-        window.clearTimeout(timer);
-        reject(error);
-      }
-    );
-  });
+async function loadTexture(url, timeoutMs) {
+  const assetUrl = resolveGreenhouseAssetUrl(url);
+  const blob = await fetchAssetPayload(assetUrl, timeoutMs, "blob");
+  const bitmap = await createImageBitmap(blob);
+  const texture = new THREE.Texture(bitmap);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  texture.anisotropy = renderer
+    ? renderer.capabilities.getMaxAnisotropy()
+    : 1;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 async function loadOptionalModel(url, timeoutMs) {
   try {
-    return await withTimeout(loadModel(url), timeoutMs, url);
+    return await scheduleAssetLoad(() => loadModel(url, timeoutMs));
   } catch (error) {
     console.warn("[mirror-room] model skipped:", url, error);
     return null;
@@ -61206,7 +61261,7 @@ async function loadOptionalModel(url, timeoutMs) {
 
 async function loadOptionalTexture(url, timeoutMs) {
   try {
-    return await withTimeout(loadTexture(url), timeoutMs, url);
+    return await scheduleAssetLoad(() => loadTexture(url, timeoutMs));
   } catch (error) {
     console.warn("[mirror-room] texture skipped:", url, error);
     return null;
