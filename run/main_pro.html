@@ -956,7 +956,7 @@
                     merged.set(chunk, offset);
                     offset += chunk.length;
                 }
-                return URL.createObjectURL(new Blob([merged], { type: 'application/octet-stream' }));
+                return merged.buffer;
             }
 
             try {
@@ -1016,7 +1016,7 @@
 
                 updateLoading(`加载场景: ${SCENE_CONFIG.sceneName}...`);
 
-                const splatUrl = await loadLargeSceneAssetInRanges(
+                const splatContents = await loadLargeSceneAssetInRanges(
                     SCENE_CONFIG.splatFile,
                     36180270,
                     updateLoading
@@ -1024,7 +1024,9 @@
 
                 const assets = {
                     splat: new pc.Asset('gaussian-splat', 'gsplat', {
-                        url: splatUrl
+                        url: SCENE_CONFIG.splatFile,
+                        filename: 'MoYuQi.sog',
+                        contents: splatContents
                     }),
                     panorama: new pc.Asset('scene-panorama', 'texture', {
                         url: SCENE_CONFIG.panoFile
