@@ -60827,8 +60827,8 @@ const OPTIONAL_ASSET_TIMEOUT = 45000;
 const OPTIONAL_TEXTURE_TIMEOUT = 30000;
 const GREENHOUSE_ASSET_BASE =
   "https://raw.githubusercontent.com/xhcurry-design/endless-dream/gh-pages/run/greenhouse/assets/";
-const GREENHOUSE_ASSET_VERSION = "20260825-greenhouse-assets-3";
-const MAX_CONCURRENT_ASSET_LOADS = 3;
+const GREENHOUSE_ASSET_VERSION = "20260826-greenhouse-progressive-1";
+const MAX_CONCURRENT_ASSET_LOADS = 4;
 const assetLoadQueue = [];
 let activeAssetLoads = 0;
 
@@ -60931,9 +60931,10 @@ async function init() {
   animate();
   try {
     await loadThreeAddons();
-    const assets = await loadAssets();
-    pendingAssetUpgrade = assets;
-    maybeApplyPendingAssetUpgrade();
+    await loadAssets((assets) => {
+      pendingAssetUpgrade = assets;
+      maybeApplyPendingAssetUpgrade();
+    });
   } catch (error) {
     console.error(error);
   }
@@ -61111,53 +61112,76 @@ function bindEvents() {
   });
 }
 
-async function loadAssets() {
-  const [table, windowFrame, door, sunflower] = await Promise.all([
-    loadOptionalModel("./assets/Table_Round_01.glb", ESSENTIAL_ASSET_TIMEOUT),
-    loadOptionalModel("./assets/Window_01.glb", ESSENTIAL_ASSET_TIMEOUT),
-    loadDoorAsset(),
-    loadOptionalModel("./assets/sunflower.gltf", ESSENTIAL_ASSET_TIMEOUT),
-  ]);
+async function loadAssets(onProgress) {
+  const assets = createFallbackAssets();
 
-  const [skylight, potPlant, grass, sunflare, extras, vineTextures] = await Promise.all([
-    loadOptionalModel("./assets/Stage_Structure_Skylight.glb", OPTIONAL_ASSET_TIMEOUT),
-    loadOptionalModel("./assets/Pot_Plant.glb", OPTIONAL_ASSET_TIMEOUT),
-    loadOptionalModel("./assets/Grass01.glb", OPTIONAL_ASSET_TIMEOUT),
-    Promise.resolve(null),
-    Promise.all(
-      ["Flower01.glb", "Flower04.glb", "Flower07.glb"].map((file) =>
-        loadOptionalModel("./assets/" + file, OPTIONAL_ASSET_TIMEOUT)
-      )
-    ),
-    Promise.all(
-      [
-        "JungleVine.png",
-        "JungleVine_03.png",
-        "JungleVine_04.png",
-        "JungleVine_05.png",
-        "JungleVine_07.png",
-      ].map(async (file) => {
-        const texture = await loadOptionalTexture(
-          "./assets/" + file,
-          OPTIONAL_TEXTURE_TIMEOUT
-        );
-        return texture ? { name: file, texture } : null;
-      })
-    ),
-  ]);
-
-  return {
-    table,
-    window: windowFrame,
-    door,
-    skylight,
-    potPlant,
-    grass,
-    sunflare,
-    sunflower,
-    extraFlowers: extras.filter(Boolean),
-    vineTextures: vineTextures.filter(Boolean),
+  const publishAsset = (key, value) => {
+    if (!value) {
+      return;
+    }
+    assets[key] = value;
+    onProgress?.(assets);
   };
+
+  const modelTasks = [
+    loadOptionalModel("./assets/Table_Round_01.glb", ESSENTIAL_ASSET_TIMEOUT).then(
+      (value) => publishAsset("table", value)
+    ),
+    loadOptionalModel("./assets/Window_01.glb", ESSENTIAL_ASSET_TIMEOUT).then(
+      (value) => publishAsset("window", value)
+    ),
+    loadDoorAsset().then((value) => publishAsset("door", value)),
+    loadOptionalModel("./assets/sunflower.gltf", ESSENTIAL_ASSET_TIMEOUT).then(
+      (value) => publishAsset("sunflower", value)
+    ),
+    loadOptionalModel(
+      "./assets/Stage_Structure_Skylight.glb",
+      OPTIONAL_ASSET_TIMEOUT
+    ).then((value) => publishAsset("skylight", value)),
+    loadOptionalModel("./assets/Pot_Plant.glb", OPTIONAL_ASSET_TIMEOUT).then(
+      (value) => publishAsset("potPlant", value)
+    ),
+  ];
+
+  const vineTasks = [
+    "JungleVine.png",
+    "JungleVine_03.png",
+    "JungleVine_04.png",
+    "JungleVine_05.png",
+    "JungleVine_07.png",
+  ].map(async (file) => {
+    const texture = await loadOptionalTexture(
+      "./assets/" + file,
+      OPTIONAL_TEXTURE_TIMEOUT
+    );
+    if (texture) {
+      assets.vineTextures.push({ name: file, texture });
+      onProgress?.(assets);
+    }
+  });
+
+  const flowerTasks = ["Flower01.glb", "Flower04.glb", "Flower07.glb"].map(
+    async (file, index) => {
+      const model = await loadOptionalModel(
+        "./assets/" + file,
+        OPTIONAL_ASSET_TIMEOUT
+      );
+      if (model) {
+        assets.extraFlowers[index] = model;
+        onProgress?.(assets);
+      }
+    }
+  );
+
+  // Grass is the largest optional model, so it goes last in the queue and can
+  // never delay the door, vines, flowers, or core furniture.
+  const grassTask = loadOptionalModel(
+    "./assets/Grass01.glb",
+    OPTIONAL_ASSET_TIMEOUT
+  ).then((value) => publishAsset("grass", value));
+
+  await Promise.all([...modelTasks, ...vineTasks, ...flowerTasks, grassTask]);
+  return assets;
 }
 
 function resolveGreenhouseAssetUrl(url) {
