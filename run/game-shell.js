@@ -118,7 +118,7 @@
         roomMusicStarted = true;
         try {
             var muted = window.localStorage.getItem(MUSIC_MUTED_KEY) === "true";
-            roomMusic = new Audio(new URL("../assets/background-music.mp3?v=20260824-music-toggle-2", window.location.href).href);
+            roomMusic = new Audio(new URL("../assets/background-music.mp3?v=20260825-music-new-1", window.location.href).href);
             roomMusic.loop = true;
             roomMusic.preload = "auto";
             roomMusic.volume = MUSIC_VOLUME;

@@ -111,7 +111,7 @@
         var musicPaused = false;
         var muted = isMuted();
         var MUSIC_URL = new URL(
-            "assets/background-music.mp3?v=20260824-music-toggle-2",
+            "assets/background-music.mp3?v=20260825-music-new-1",
             (document.currentScript && document.currentScript.src) || window.location.href
         ).href;
         var MUSIC_VOLUME = 0.24;
