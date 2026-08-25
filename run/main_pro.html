@@ -902,7 +902,7 @@
             }
 
             async function loadLargeSceneAssetInRanges(url, totalBytes, onProgress) {
-                const chunkSize = 4 * 1024 * 1024;
+                const chunkSize = 2 * 1024 * 1024;
                 const chunkCount = Math.ceil(totalBytes / chunkSize);
                 const chunks = new Array(chunkCount);
                 let completedBytes = 0;
@@ -913,7 +913,7 @@
                     let lastError;
                     for (let attempt = 0; attempt < 3; attempt += 1) {
                         const controller = new AbortController();
-                        const timeoutId = window.setTimeout(() => controller.abort(), 60000);
+                        const timeoutId = window.setTimeout(() => controller.abort(), 180000);
                         try {
                             const response = await fetch(url, {
                                 cache: 'no-store',
@@ -942,9 +942,9 @@
                     throw lastError || new Error('场景分段请求失败');
                 }
 
-                for (let batchStart = 0; batchStart < chunkCount; batchStart += 3) {
+                for (let batchStart = 0; batchStart < chunkCount; batchStart += 2) {
                     const batch = [];
-                    for (let index = batchStart; index < Math.min(chunkCount, batchStart + 3); index += 1) {
+                    for (let index = batchStart; index < Math.min(chunkCount, batchStart + 2); index += 1) {
                         batch.push(loadChunk(index));
                     }
                     await Promise.all(batch);
