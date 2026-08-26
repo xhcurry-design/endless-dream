@@ -902,35 +902,97 @@
             }
 
             async function loadLargeSceneAssetInRanges(url, totalBytes, onProgress) {
-                let lastError;
-                for (let attempt = 0; attempt < 2; attempt += 1) {
-                    const controller = new AbortController();
-                    // The 36 MB scene can take several minutes on throttled GitHub Pages
-                    // connections. Prefer a long wait over aborting a valid download.
-                    const timeoutId = window.setTimeout(() => controller.abort(), 15 * 60 * 1000);
-                    try {
-                        onProgress(attempt === 0 ? '下载场景...' : '重新下载场景...');
-                        const response = await fetch(url, {
-                            cache: 'force-cache',
-                            signal: controller.signal
-                        });
-                        if (!response.ok) {
-                            throw new Error(`场景请求失败: HTTP ${response.status}`);
+                const requestTimeoutMs = 15 * 60 * 1000;
+                const fetchBuffer = async (requestUrl, init, expectedBytes) => {
+                    let lastError;
+                    for (let attempt = 0; attempt < 3; attempt += 1) {
+                        const controller = new AbortController();
+                        const timeoutId = window.setTimeout(() => controller.abort(), requestTimeoutMs);
+                        try {
+                            const response = await fetch(requestUrl, {
+                                ...init,
+                                cache: 'force-cache',
+                                signal: controller.signal
+                            });
+                            if (!response.ok) {
+                                throw new Error(`场景请求失败: HTTP ${response.status}`);
+                            }
+                            const buffer = await response.arrayBuffer();
+                            if (Number.isFinite(expectedBytes) && buffer.byteLength !== expectedBytes) {
+                                throw new Error(`场景分段长度不完整: ${buffer.byteLength}/${expectedBytes}`);
+                            }
+                            return { response, buffer };
+                        } catch (error) {
+                            lastError = error;
+                            if (attempt < 2) {
+                                await new Promise((resolve) => window.setTimeout(resolve, 900 * (attempt + 1)));
+                            }
+                        } finally {
+                            window.clearTimeout(timeoutId);
                         }
-                        const buffer = await response.arrayBuffer();
-                        if (Number.isFinite(totalBytes) && totalBytes > 0 && buffer.byteLength !== totalBytes) {
-                            throw new Error(`场景长度不完整: ${buffer.byteLength}/${totalBytes}`);
-                        }
-                        onProgress('下载场景: 100%');
-                        return buffer;
-                    } catch (error) {
-                        lastError = error;
-                        await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
-                    } finally {
-                        window.clearTimeout(timeoutId);
                     }
+                    throw lastError || new Error('场景请求失败');
+                };
+
+                const loadAsSingleRequest = async () => {
+                    onProgress('连续下载场景...');
+                    const { buffer } = await fetchBuffer(url, {}, totalBytes);
+                    onProgress('下载场景: 100%');
+                    return buffer;
+                };
+
+                if (!Number.isFinite(totalBytes) || totalBytes <= 0) {
+                    return loadAsSingleRequest();
                 }
-                throw lastError || new Error('场景请求失败');
+
+                try {
+                    onProgress('检测场景分段下载...');
+                    const probe = await fetchBuffer(url, {
+                        headers: { Range: 'bytes=0-0' }
+                    });
+                    if (probe.response.status !== 206) {
+                        if (probe.buffer.byteLength === totalBytes) {
+                            onProgress('下载场景: 100%');
+                            return probe.buffer;
+                        }
+                        throw new Error('服务器未返回可用的分段响应');
+                    }
+
+                    const chunkBytes = 4 * 1024 * 1024;
+                    const chunks = [];
+                    for (let start = 0; start < totalBytes; start += chunkBytes) {
+                        chunks.push({
+                            start,
+                            end: Math.min(totalBytes - 1, start + chunkBytes - 1)
+                        });
+                    }
+
+                    const assembled = new Uint8Array(totalBytes);
+                    let nextChunk = 0;
+                    let completedBytes = 0;
+                    const worker = async () => {
+                        while (nextChunk < chunks.length) {
+                            const chunk = chunks[nextChunk++];
+                            const expectedBytes = chunk.end - chunk.start + 1;
+                            const { response, buffer } = await fetchBuffer(url, {
+                                headers: { Range: `bytes=${chunk.start}-${chunk.end}` }
+                            }, expectedBytes);
+                            if (response.status !== 206) {
+                                throw new Error(`场景分段请求未返回 206：HTTP ${response.status}`);
+                            }
+                            assembled.set(new Uint8Array(buffer), chunk.start);
+                            completedBytes += expectedBytes;
+                            onProgress(`下载场景: ${Math.min(100, Math.round(completedBytes / totalBytes * 100))}%`);
+                        }
+                    };
+
+                    await Promise.all(Array.from({ length: Math.min(4, chunks.length) }, worker));
+                    onProgress('下载场景: 100%');
+                    return assembled.buffer;
+                } catch (rangeError) {
+                    console.warn('场景分段下载不可用，切换连续下载:', rangeError);
+                    return loadAsSingleRequest();
+                }
             }
 
             try {
