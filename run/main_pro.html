@@ -905,7 +905,9 @@
                 let lastError;
                 for (let attempt = 0; attempt < 2; attempt += 1) {
                     const controller = new AbortController();
-                    const timeoutId = window.setTimeout(() => controller.abort(), 120000);
+                    // The 36 MB scene can take several minutes on throttled GitHub Pages
+                    // connections. Prefer a long wait over aborting a valid download.
+                    const timeoutId = window.setTimeout(() => controller.abort(), 15 * 60 * 1000);
                     try {
                         onProgress(attempt === 0 ? '下载场景...' : '重新下载场景...');
                         const response = await fetch(url, {
@@ -1028,7 +1030,7 @@
                             settled = true;
                             reject(new Error('场景资源加载超时，请检查网络后重新尝试'));
                         }
-                    }, 300000);
+                    }, 15 * 60 * 1000);
                     assetListLoader.load((err) => {
                         if (settled) return;
                         settled = true;
