@@ -1122,17 +1122,33 @@
     async function loadVoxelCollision(voxelJsonUrl, options = {}) {
         const fetchTimeoutMs = Number.isFinite(options.fetchTimeoutMs)
             ? Math.max(1000, options.fetchTimeoutMs)
-            : 30000;
+            : 120000;
+        const fetchAttempts = Number.isFinite(options.fetchAttempts)
+            ? Math.max(1, Math.floor(options.fetchAttempts))
+            : 3;
         const fetchWithTimeout = async (url) => {
-            const controller = typeof AbortController === 'function'
-                ? new AbortController()
-                : null;
-            const timeoutId = setTimeout(() => controller?.abort(), fetchTimeoutMs);
-            try {
-                return await fetch(url, controller ? { signal: controller.signal } : undefined);
-            } finally {
-                clearTimeout(timeoutId);
+            let lastError = null;
+            for (let attempt = 1; attempt <= fetchAttempts; attempt++) {
+                const controller = typeof AbortController === 'function'
+                    ? new AbortController()
+                    : null;
+                const timeoutId = setTimeout(() => controller?.abort(), fetchTimeoutMs);
+                try {
+                    const response = await fetch(url, controller
+                        ? { signal: controller.signal, cache: 'force-cache' }
+                        : { cache: 'force-cache' });
+                    if (response.ok) return response;
+                    lastError = new Error(`无法加载 ${url}（HTTP ${response.status}）`);
+                } catch (error) {
+                    lastError = error;
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+                if (attempt < fetchAttempts) {
+                    await new Promise((resolve) => setTimeout(resolve, attempt * 1200));
+                }
             }
+            throw lastError || new Error(`无法加载 ${url}`);
         };
 
         const metaRes = await fetchWithTimeout(voxelJsonUrl);
@@ -1146,7 +1162,14 @@
             throw new Error(`不支持的 voxel 格式主版本：${meta.version}`);
         }
 
-        const binUrl = voxelJsonUrl.replace(/\.voxel\.json$/i, '.voxel.bin');
+        // Preserve cache-busting query/hash parameters while replacing only the path suffix.
+        const suffixIndex = voxelJsonUrl.search(/[?#]/);
+        const jsonPath = suffixIndex >= 0 ? voxelJsonUrl.slice(0, suffixIndex) : voxelJsonUrl;
+        const urlSuffix = suffixIndex >= 0 ? voxelJsonUrl.slice(suffixIndex) : '';
+        if (!/\.voxel\.json$/i.test(jsonPath)) {
+            throw new Error(`体素元数据地址格式不正确：${voxelJsonUrl}`);
+        }
+        const binUrl = jsonPath.replace(/\.voxel\.json$/i, '.voxel.bin') + urlSuffix;
         const binRes = await fetchWithTimeout(binUrl);
         if (!binRes.ok) {
             throw new Error(`无法加载 ${binUrl}（HTTP ${binRes.status}）`);
