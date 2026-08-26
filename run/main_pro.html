@@ -721,11 +721,11 @@
             id: 'room',
             label: '无尽梦境',
             sceneName: 'MoYuQi',
-            splatFile: 'https://raw.githubusercontent.com/xhcurry-design/endless-dream/gh-pages/Assert/scene/MoYuQi.sog?v=20260824-scene-1',
+            splatFile: 'Assert/scene/MoYuQi.sog?v=20260826-main-scene-cache-1',
             panoFile: 'Assert/scene/MoYuQi_environment.png',
             panoYaw: 0,
             colliderFile: 'Assert/collision/MoYuQi.collision.glb',
-            voxelFile: 'https://raw.githubusercontent.com/xhcurry-design/endless-dream/gh-pages/Assert/collision/MoYuQi.voxel.json',
+            voxelFile: 'Assert/collision/MoYuQi.voxel.json?v=20260826-main-scene-cache-1',
             collisionFrame: 'world',
             splatFrame: 'world',
             splatPosition: Object.freeze([-0.2181476514, 0.1634744378, -0.2738597835]),
@@ -902,61 +902,33 @@
             }
 
             async function loadLargeSceneAssetInRanges(url, totalBytes, onProgress) {
-                const chunkSize = 2 * 1024 * 1024;
-                const chunkCount = Math.ceil(totalBytes / chunkSize);
-                const chunks = new Array(chunkCount);
-                let completedBytes = 0;
-
-                async function loadChunk(index) {
-                    const start = index * chunkSize;
-                    const end = Math.min(totalBytes - 1, start + chunkSize - 1);
-                    let lastError;
-                    for (let attempt = 0; attempt < 3; attempt += 1) {
-                        const controller = new AbortController();
-                        const timeoutId = window.setTimeout(() => controller.abort(), 180000);
-                        try {
-                            const response = await fetch(url, {
-                                cache: 'no-store',
-                                headers: { Range: `bytes=${start}-${end}` },
-                                signal: controller.signal
-                            });
-                            if (!response.ok) {
-                                throw new Error(`场景分段请求失败: HTTP ${response.status}`);
-                            }
-                            const bytes = new Uint8Array(await response.arrayBuffer());
-                            const expectedLength = end - start + 1;
-                            if (bytes.length !== expectedLength) {
-                                throw new Error(`场景分段长度不完整: ${bytes.length}/${expectedLength}`);
-                            }
-                            chunks[index] = bytes;
-                            completedBytes += bytes.length;
-                            onProgress(`下载场景: ${Math.round((completedBytes / totalBytes) * 100)}%`);
-                            return;
-                        } catch (error) {
-                            lastError = error;
-                            await new Promise((resolve) => window.setTimeout(resolve, 500 * (attempt + 1)));
-                        } finally {
-                            window.clearTimeout(timeoutId);
+                let lastError;
+                for (let attempt = 0; attempt < 2; attempt += 1) {
+                    const controller = new AbortController();
+                    const timeoutId = window.setTimeout(() => controller.abort(), 120000);
+                    try {
+                        onProgress(attempt === 0 ? '下载场景...' : '重新下载场景...');
+                        const response = await fetch(url, {
+                            cache: 'force-cache',
+                            signal: controller.signal
+                        });
+                        if (!response.ok) {
+                            throw new Error(`场景请求失败: HTTP ${response.status}`);
                         }
+                        const buffer = await response.arrayBuffer();
+                        if (Number.isFinite(totalBytes) && totalBytes > 0 && buffer.byteLength !== totalBytes) {
+                            throw new Error(`场景长度不完整: ${buffer.byteLength}/${totalBytes}`);
+                        }
+                        onProgress('下载场景: 100%');
+                        return buffer;
+                    } catch (error) {
+                        lastError = error;
+                        await new Promise((resolve) => window.setTimeout(resolve, 700 * (attempt + 1)));
+                    } finally {
+                        window.clearTimeout(timeoutId);
                     }
-                    throw lastError || new Error('场景分段请求失败');
                 }
-
-                for (let batchStart = 0; batchStart < chunkCount; batchStart += 2) {
-                    const batch = [];
-                    for (let index = batchStart; index < Math.min(chunkCount, batchStart + 2); index += 1) {
-                        batch.push(loadChunk(index));
-                    }
-                    await Promise.all(batch);
-                }
-
-                const merged = new Uint8Array(totalBytes);
-                let offset = 0;
-                for (const chunk of chunks) {
-                    merged.set(chunk, offset);
-                    offset += chunk.length;
-                }
-                return merged.buffer;
+                throw lastError || new Error('场景请求失败');
             }
 
             try {
