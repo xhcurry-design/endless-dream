@@ -911,7 +911,7 @@
                         try {
                             const response = await fetch(requestUrl, {
                                 ...init,
-                                cache: 'force-cache',
+                                cache: init.cache || 'default',
                                 signal: controller.signal
                             });
                             if (!response.ok) {
@@ -936,7 +936,7 @@
 
                 const loadAsSingleRequest = async () => {
                     onProgress('连续下载场景...');
-                    const { buffer } = await fetchBuffer(url, {}, totalBytes);
+                    const { buffer } = await fetchBuffer(url, { cache: 'force-cache' }, totalBytes);
                     onProgress('下载场景: 100%');
                     return buffer;
                 };
@@ -946,18 +946,6 @@
                 }
 
                 try {
-                    onProgress('检测场景分段下载...');
-                    const probe = await fetchBuffer(url, {
-                        headers: { Range: 'bytes=0-0' }
-                    });
-                    if (probe.response.status !== 206) {
-                        if (probe.buffer.byteLength === totalBytes) {
-                            onProgress('下载场景: 100%');
-                            return probe.buffer;
-                        }
-                        throw new Error('服务器未返回可用的分段响应');
-                    }
-
                     const chunkBytes = 4 * 1024 * 1024;
                     const chunks = [];
                     for (let start = 0; start < totalBytes; start += chunkBytes) {
@@ -970,6 +958,7 @@
                     const assembled = new Uint8Array(totalBytes);
                     let nextChunk = 0;
                     let completedBytes = 0;
+                    onProgress('并行下载场景: 0%');
                     const worker = async () => {
                         while (nextChunk < chunks.length) {
                             const chunk = chunks[nextChunk++];
